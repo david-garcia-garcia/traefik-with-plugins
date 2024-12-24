@@ -11,6 +11,9 @@ jobs:
     environment: DOCKERHUB_USERNAME
     name: push docker image to hub
     runs-on: ubuntu-latest
+    env:
+      REGISTRY: docker.io/davidbcn86
+      IMAGE_NAME: ${{ github.repository }}
     steps:
       - name: check repository
         uses: actions/checkout@v4
