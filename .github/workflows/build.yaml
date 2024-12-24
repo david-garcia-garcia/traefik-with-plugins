@@ -31,7 +31,6 @@ jobs:
           test_var: true
         with:
           context: ./traefik
-          file: ./dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
