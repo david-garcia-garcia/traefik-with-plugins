@@ -12,8 +12,8 @@ jobs:
     name: push docker image to hub
     runs-on: ubuntu-latest
     env:
-      REGISTRY: docker.io/davidbcn86
-      IMAGE_NAME: ${{ github.repository }}
+      REGISTRY: docker.io
+      IMAGE_NAME: davidbcn86/traefik-with-plugins
     steps:
       - name: check repository
         uses: actions/checkout@v4
