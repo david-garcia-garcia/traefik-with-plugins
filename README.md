@@ -19,3 +19,7 @@ To build the image locally use:
 ```
 
 The project includes a sample traefik.yml
+
+Built images are available at:
+
+[davidbcn86/traefik-with-plugins general | Docker Hub](https://hub.docker.com/repository/docker/davidbcn86/traefik-with-plugins/general)
