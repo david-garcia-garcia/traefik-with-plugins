@@ -1,0 +1,18 @@
+experimental:
+  localPlugins:
+    modsecurity:
+      moduleName: "github.com/acouvreur/traefik-modsecurity-plugin"
+# There is something wrong with the coraza github repo, the local mode will not work
+#    coraza:
+#      moduleName: "github.com/jcchavezs/coraza-http-wasm-traefik"
+    geoblock:
+      moduleName: "github.com/nscuro/traefik-plugin-geoblock"
+    sablier:
+      moduleName: "github.com/sablierapp/sablier"
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+log:
+  level: "TRACE"

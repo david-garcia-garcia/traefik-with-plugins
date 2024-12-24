@@ -1,0 +1,9 @@
+services:
+  traefik:
+    image: ${IMAGE_NAME}
+    build:
+      context: ./traefik
+      dockerfile: dockerfile
+    volumes:
+      # Mount the local traefik.yml to the container's /etc/traefik/traefik.yml
+      - ./traefik.yml:/etc/traefik/traefik.yml
