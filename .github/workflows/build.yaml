@@ -5,6 +5,10 @@ on:
       - "v*"
 jobs:
   push_to_registry:
+    permissions:
+      contents: read
+      pages: read
+      id-token: read
     environment: DOCKERHUB_USERNAME
     name: push docker image to hub
     runs-on: ubuntu-latest
