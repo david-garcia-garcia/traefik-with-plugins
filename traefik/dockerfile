@@ -11,13 +11,15 @@ RUN set -eux; \
 RUN set -eux; \
     mkdir -p /plugins-local/src/github.com/acouvreur && \
     mkdir -p /plugins-local/src/github.com/jcchavezs && \
-    mkdir -p /plugins-local/src/github.com/david-garcia-garcia && \
-    mkdir -p /plugins-local/src/github.com/sablierapp
+    mkdir -p /plugins-local/src/github.com/nscuro && \
+    mkdir -p /plugins-local/src/github.com/sablierapp && \
+    mkdir -p /plugins-local/src/github.com/maxlerebourg
 
 RUN set -eux && git clone https://github.com/acouvreur/traefik-modsecurity-plugin /plugins-local/src/github.com/acouvreur/traefik-modsecurity-plugin --branch v1.3.0 --single-branch
 RUN set -eux && git clone https://github.com/jcchavezs/coraza-http-wasm-traefik /plugins-local/src/github.com/jcchavezs/coraza-http-wasm-traefik --branch v0.3.0 --single-branch
 RUN set -eux && git clone https://github.com/david-garcia-garcia/traefik-plugin-geoblock /plugins-local/src/github.com/nscuro/traefik-plugin-geoblock --branch fix-port --single-branch
 RUN set -eux && git clone https://github.com/sablierapp/sablier /plugins-local/src/github.com/sablierapp/sablier --branch v1.8.1 --single-branch
+RUN set -eux && git clone https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin /plugins-local/src/github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin --branch v1.4.0 --single-branch
 
 # Stage 2: Copy the plugins
 FROM traefik:3.1.7
