@@ -1,7 +1,7 @@
 experimental:
   localPlugins:
     modsecurity:
-      moduleName: "github.com/acouvreur/traefik-modsecurity-plugin"
+      moduleName: "github.com/madebymode/traefik-modsecurity-plugin"
 # There is something wrong with the coraza github repo, the local mode will not work
 #    coraza:
 #      moduleName: "github.com/jcchavezs/coraza-http-wasm-traefik"
