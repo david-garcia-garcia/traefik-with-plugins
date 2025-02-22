@@ -22,7 +22,7 @@ RUN set -eux && git clone https://github.com/sablierapp/sablier /plugins-local/s
 RUN set -eux && git clone https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin /plugins-local/src/github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin --branch v1.4.1 --single-branch
 
 # Stage 2: Copy the plugins
-FROM traefik:3.3.3
+FROM traefik:3.1.7
 
 # Copy the plugins from the builder stage
 COPY --from=builder /plugins-local /plugins-local
