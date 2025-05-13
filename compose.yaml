@@ -1,9 +1,36 @@
 services:
   traefik:
     image: ${IMAGE_NAME}
+    restart: unless-stopped
     build:
       context: ./traefik
       dockerfile: dockerfile
     volumes:
       # Mount the local traefik.yml to the container's /etc/traefik/traefik.yml
       - ./traefik.yml:/etc/traefik/traefik.yml
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    ports:
+      - 8000:80
+      - 8080:8080
+  crowdsec:
+    image: traefik/whoami
+    container_name: "whoami-crowdsec"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.router-bar.rule=Path(`/crowdsec`)"
+      - "traefik.http.routers.router-bar.entrypoints=web"
+      - "traefik.http.routers.router-bar.middlewares=crowdsec@docker"
+      - "traefik.http.services.service-bar.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.enabled=true"
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdseclapikey=FIXME-LAPI-KEY-1="
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecappsecenabled=true"
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.forwardedheaderstrustedips=172.21.0.5"
+  whoami:
+    image: traefik/whoami
+    container_name: "whoami"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.router-bar.rule=Path(`/whoami`)"
+      - "traefik.http.routers.router-bar.entrypoints=web"
