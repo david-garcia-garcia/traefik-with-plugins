@@ -10,8 +10,8 @@ RUN set -eux; \
 # Create the directory for the plugins
 RUN set -eux; \
     mkdir -p /plugins-local/src/github.com/madebymode && \
-    mkdir -p /plugins-local/src/github.com/david-garcia-garcia && \
     mkdir -p /plugins-local/src/github.com/sablierapp && \
+    mkdir -p /plugins-local/src/github.com/david-garcia-garcia && \
     mkdir -p /plugins-local/src/github.com/maxlerebourg
 
 RUN set -eux && git clone https://github.com/david-garcia-garcia/traefik-modsecurity-plugin /plugins-local/src/github.com/madebymode/traefik-modsecurity-plugin --branch backoff --single-branch
