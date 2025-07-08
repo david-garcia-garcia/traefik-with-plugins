@@ -16,7 +16,6 @@ services:
       - 8080:8080
     depends_on:
       - waf
-      - crowdsec
 
   # Service 1: Plain whoami without any middleware
   whoami-plain:
@@ -41,7 +40,7 @@ services:
       - "traefik.http.routers.modsecurity-router.middlewares=waf@docker"
       - "traefik.http.services.modsecurity-service.loadbalancer.server.port=80"
       - "traefik.http.middlewares.waf.plugin.modsecurity.modSecurityUrl=http://waf:8080"
-      - "traefik.http.middlewares.waf.plugin.modsecurity.jailEnabled=true"
+      - "traefik.http.middlewares.waf.plugin.modsecurity.jailEnabled=false"
 
   # Service 3: Whoami with Geoblock middleware (simplified config)
   whoami-geoblock:
@@ -73,9 +72,11 @@ services:
       - "traefik.http.services.crowdsec-service.loadbalancer.server.port=80"
       - "traefik.http.middlewares.crowdsec.plugin.bouncer.enabled=true"
       - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdseclapikey=test-api-key-123"
-      - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecappsecenabled=true"
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecappsecenabled=false"
       - "traefik.http.middlewares.crowdsec.plugin.bouncer.forwardedheaderstrustedips=172.21.0.5"
-
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecMode=stream"
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.updateMaxFailure=-1"
+      - "traefik.http.middlewares.crowdsec.plugin.bouncer.logLevel=DEBUG"
   # ModSecurity WAF service
   waf:
     image: owasp/modsecurity-crs:4.3.0-apache-alpine-202406090906
@@ -100,24 +101,6 @@ services:
     labels:
       - "traefik.enable=false"
 
-  # CrowdSec service
-  crowdsec:
-    image: crowdsecurity/crowdsec:v1.6.9
-    container_name: "crowdsec"
-    restart: unless-stopped
-    environment:
-      COLLECTIONS: crowdsecurity/traefik crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules
-      CUSTOM_HOSTNAME: crowdsec
-      BOUNCER_KEY_TRAEFIK: test-api-key-123
-    volumes:
-      - logs:/var/log/traefik:ro
-      - crowdsec-db:/var/lib/crowdsec/data/
-      - crowdsec-config:/etc/crowdsec/
-    labels:
-      - "traefik.enable=false"
-
 volumes:
   logs:
-  crowdsec-db:
-  crowdsec-config:
   geoblock-data:
