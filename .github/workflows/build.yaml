@@ -48,11 +48,11 @@ jobs:
           $elapsed += 2
         } while ($elapsed -lt $timeout)
         
-        Write-Host "Waiting for whoami service to be ready..."
+        Write-Host "Waiting for whoami services to be ready..."
         $elapsed = 0
         do {
           try {
-            $response = Invoke-WebRequest -Uri "http://localhost:8000/whoami" -Method Get -TimeoutSec 5 -UseBasicParsing
+            $response = Invoke-WebRequest -Uri "http://localhost:8000/plain" -Method Get -TimeoutSec 5 -UseBasicParsing
             if ($response.StatusCode -eq 200) { break }
           } catch { }
           Start-Sleep 2
@@ -70,10 +70,20 @@ jobs:
       run: |
         echo "=== Traefik logs ==="
         docker compose logs traefik
-        echo "=== Whoami logs ==="
-        docker compose logs whoami
-        echo "=== Whoami-CrowdSec logs ==="
+        echo "=== Plain Whoami logs ==="
+        docker compose logs whoami-plain
+        echo "=== ModSecurity Whoami logs ==="
+        docker compose logs whoami-modsecurity
+        echo "=== Geoblock Whoami logs ==="
+        docker compose logs whoami-geoblock
+        echo "=== CrowdSec Whoami logs ==="
+        docker compose logs whoami-crowdsec
+        echo "=== WAF logs ==="
+        docker compose logs waf
+        echo "=== CrowdSec logs ==="
         docker compose logs crowdsec
+        echo "=== Dummy backend logs ==="
+        docker compose logs dummy
     - name: Cleanup
       if: always()
       run: docker compose down -v

@@ -197,11 +197,11 @@ try {
         
         $servicesReady = @(
             (Test-ServiceHealth -Url "http://localhost:8080/api/rawdata" -ServiceName "Traefik API"),
-            (Test-ServiceHealth -Url "http://localhost:8000/whoami" -ServiceName "Whoami service")
+            (Test-ServiceHealth -Url "http://localhost:8000/plain" -ServiceName "Plain whoami service"),
+            (Test-ServiceHealth -Url "http://localhost:8000/modsecurity" -ServiceName "ModSecurity whoami service"),
+            (Test-ServiceHealth -Url "http://localhost:8000/geoblock" -ServiceName "Geoblock whoami service"),
+            (Test-ServiceHealth -Url "http://localhost:8000/crowdsec" -ServiceName "CrowdSec whoami service")
         )
-        
-        # Note: CrowdSec service test is skipped as it requires a real CrowdSec service
-        Write-Warning "CrowdSec service health check skipped (requires real CrowdSec service)"
         
         if ($servicesReady -contains $false) {
             Write-Error "One or more services failed to start properly"

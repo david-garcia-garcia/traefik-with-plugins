@@ -27,14 +27,14 @@ Built images are available at:
 # Current container state
 
 ## Traefik Version
-- **Traefik**: 3.4.3
+- **Traefik**: 3.1.7
 
 ## Embedded Plugins
 
 | Plugin | Repository | Version/Branch |
 |--------|------------|----------------|
 | **ModSecurity** | [madebymode/traefik-modsecurity-plugin](https://github.com/madebymode/traefik-modsecurity-plugin) | `backoff` |
-| **Geoblock** | [david-garcia-garcia/traefik-geoblock](https://github.com/david-garcia-garcia/traefik-geoblock) | `v1.1.0-beta.0` |
+| **Geoblock** | [david-garcia-garcia/traefik-geoblock](https://github.com/david-garcia-garcia/traefik-geoblock) | `v1.1.0-beta.2` |
 | **Sablier** | [sablierapp/sablier](https://github.com/sablierapp/sablier) | `v1.8.1` |
 | **CrowdSec Bouncer** | [maxlerebourg/crowdsec-bouncer-traefik-plugin](https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin) | `reportmetrics.2` |
 
@@ -54,6 +54,27 @@ experimental:
     bouncer:
       moduleName: "github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
 ```
+
+## Supporting Services
+
+The `compose.yaml` file includes additional services required for proper plugin operation:
+
+| Service | Purpose | Plugin |
+|---------|---------|--------|
+| **waf** | OWASP ModSecurity CRS WAF service | ModSecurity |
+| **crowdsec** | CrowdSec security engine | CrowdSec Bouncer |
+| **dummy** | Backend service for WAF | ModSecurity |
+
+## Test Routes
+
+The integration tests verify the following routes:
+
+| Route | Service | Middleware | Description |
+|-------|---------|------------|-------------|
+| `/plain` | whoami-plain | None | Basic service without middleware |
+| `/modsecurity` | whoami-modsecurity | ModSecurity | Protected by WAF |
+| `/geoblock` | whoami-geoblock | Geoblock | IP-based geo-blocking |
+| `/crowdsec` | whoami-crowdsec | CrowdSec Bouncer | CrowdSec protection |
 
 ## Testing
 

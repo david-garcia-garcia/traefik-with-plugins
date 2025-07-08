@@ -63,40 +63,78 @@ Describe "Traefik API Tests" {
 }
 
 Describe "Service Endpoint Tests" {
-    Context "Whoami Service" {
-        It "Should respond to /whoami endpoint" {
-            $response = Invoke-TestRequest -Uri "$script:BaseUrl/whoami"
+    Context "Plain Service (No Middleware)" {
+        It "Should respond to /plain endpoint" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/plain"
             $response.StatusCode | Should -Be 200
             $response.Content | Should -Not -BeNullOrEmpty
         }
 
         It "Should return valid whoami response format" {
-            $response = Invoke-TestRequest -Uri "$script:BaseUrl/whoami"
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/plain"
+            $response.Content | Should -Match "Hostname:"
+        }
+    }
+
+    Context "ModSecurity Service" {
+        It "Should respond to /modsecurity endpoint" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/modsecurity"
+            $response.StatusCode | Should -Be 200
+            $response.Content | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should return valid response with ModSecurity middleware" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/modsecurity"
+            $response.Content | Should -Match "Hostname:"
+        }
+    }
+
+    Context "Geoblock Service" {
+        It "Should respond to /geoblock endpoint" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/geoblock"
+            $response.StatusCode | Should -Be 200
+            $response.Content | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should return valid response with Geoblock middleware" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/geoblock"
             $response.Content | Should -Match "Hostname:"
         }
     }
 
     Context "CrowdSec Service" {
-        It "Should respond to /crowdsec endpoint (may fail if CrowdSec service not running)" {
-            # Note: CrowdSec plugin requires a real CrowdSec service to be running
-            # This test may fail if the CrowdSec service is not properly configured
-            try {
-                $response = Invoke-TestRequest -Uri "$script:BaseUrl/crowdsec"
-                $response.StatusCode | Should -Be 200
-                $response.Content | Should -Not -BeNullOrEmpty
-            }
-            catch {
-                # Expected to fail if CrowdSec service is not running
-                Write-Host "CrowdSec endpoint failed as expected without CrowdSec service: $($_.Exception.Message)" -ForegroundColor Yellow
-                $true | Should -Be $true # Test passes - this is expected behavior
-            }
+        It "Should respond to /crowdsec endpoint" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/crowdsec"
+            $response.StatusCode | Should -Be 200
+            $response.Content | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should return valid response with CrowdSec middleware" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/crowdsec"
+            $response.Content | Should -Match "Hostname:"
         }
     }
 }
 
 Describe "Plugin Configuration Tests" {
-    Context "CrowdSec Plugin" {
-        It "Should have CrowdSec bouncer middleware configured" {
+    Context "Middleware Plugins" {
+        It "Should have ModSecurity middleware configured" {
+            $response = Invoke-TestRequest -Uri "$script:TraefikApiUrl/api/http/middlewares"
+            $response.StatusCode | Should -Be 200
+            $content = $response.Content | ConvertFrom-Json
+            $modsecurityMiddleware = $content | Where-Object { $_.name -eq "modsecurity@docker" }
+            $modsecurityMiddleware | Should -Not -BeNull
+        }
+
+        It "Should have Geoblock middleware configured" {
+            $response = Invoke-TestRequest -Uri "$script:TraefikApiUrl/api/http/middlewares"
+            $response.StatusCode | Should -Be 200
+            $content = $response.Content | ConvertFrom-Json
+            $geoblockMiddleware = $content | Where-Object { $_.name -eq "geoblock@docker" }
+            $geoblockMiddleware | Should -Not -BeNull
+        }
+
+        It "Should have CrowdSec middleware configured" {
             $response = Invoke-TestRequest -Uri "$script:TraefikApiUrl/api/http/middlewares"
             $response.StatusCode | Should -Be 200
             $content = $response.Content | ConvertFrom-Json
@@ -108,21 +146,24 @@ Describe "Plugin Configuration Tests" {
 
 Describe "Basic Routing Tests" {
     Context "Path-based Routing" {
-        It "Should route /whoami to whoami service" {
-            $response = Invoke-TestRequest -Uri "$script:BaseUrl/whoami"
+        It "Should route /plain to plain service" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/plain"
             $response.StatusCode | Should -Be 200
         }
 
-        It "Should route /crowdsec to crowdsec service (may fail without CrowdSec service)" {
-            try {
-                $response = Invoke-TestRequest -Uri "$script:BaseUrl/crowdsec"
-                $response.StatusCode | Should -Be 200
-            }
-            catch {
-                # Expected to fail if CrowdSec service is not running
-                Write-Host "CrowdSec routing failed as expected without CrowdSec service: $($_.Exception.Message)" -ForegroundColor Yellow
-                $true | Should -Be $true # Test passes - this is expected behavior
-            }
+        It "Should route /modsecurity to modsecurity service" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/modsecurity"
+            $response.StatusCode | Should -Be 200
+        }
+
+        It "Should route /geoblock to geoblock service" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/geoblock"
+            $response.StatusCode | Should -Be 200
+        }
+
+        It "Should route /crowdsec to crowdsec service" {
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/crowdsec"
+            $response.StatusCode | Should -Be 200
         }
 
         It "Should return 404 for unknown paths" {
@@ -139,9 +180,18 @@ Describe "Basic Routing Tests" {
 
 Describe "Basic Performance Tests" {
     Context "Response Times" {
-        It "Should respond to /whoami within reasonable time" {
+        It "Should respond to /plain within reasonable time" {
             $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-            $response = Invoke-TestRequest -Uri "$script:BaseUrl/whoami"
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/plain"
+            $stopwatch.Stop()
+            
+            $response.StatusCode | Should -Be 200
+            $stopwatch.ElapsedMilliseconds | Should -BeLessThan 5000
+        }
+
+        It "Should respond to middleware services within reasonable time" {
+            $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/modsecurity"
             $stopwatch.Stop()
             
             $response.StatusCode | Should -Be 200
@@ -162,12 +212,12 @@ Describe "Basic Performance Tests" {
 Describe "Header Tests" {
     Context "Response Headers" {
         It "Should include Traefik headers in responses" {
-            $response = Invoke-TestRequest -Uri "$script:BaseUrl/whoami"
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/plain"
             $response.Headers.Keys | Should -Contain "Date"
         }
 
         It "Should handle basic HTTP headers correctly" {
-            $response = Invoke-TestRequest -Uri "$script:BaseUrl/whoami"
+            $response = Invoke-TestRequest -Uri "$script:BaseUrl/plain"
             $response.Headers.Keys | Should -Contain "Content-Type"
         }
     }
