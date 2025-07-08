@@ -122,7 +122,7 @@ Describe "Plugin Configuration Tests" {
             $response = Invoke-TestRequest -Uri "$script:TraefikApiUrl/api/http/middlewares"
             $response.StatusCode | Should -Be 200
             $content = $response.Content | ConvertFrom-Json
-            $modsecurityMiddleware = $content | Where-Object { $_.name -eq "modsecurity@docker" }
+            $modsecurityMiddleware = $content | Where-Object { $_.name -eq "waf@docker" }
             $modsecurityMiddleware | Should -Not -BeNull
         }
 
