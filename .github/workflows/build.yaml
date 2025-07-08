@@ -1,9 +1,92 @@
 name: Build and Push Docker Image to Docker Hub
 on:
   push:
+    branches:
+      - master
+      - main
     tags:
       - "v*"
+  pull_request:
+    branches:
+      - master
+      - main
+
+permissions: { }
+
 jobs:
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Install PowerShell and Pester
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget apt-transport-https software-properties-common
+        wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb"
+        sudo dpkg -i packages-microsoft-prod.deb
+        sudo apt-get update
+        sudo apt-get install -y powershell
+        pwsh -c "Install-Module -Name Pester -Force -Scope CurrentUser -SkipPublisherCheck"
+    - name: Start services
+      run: docker compose up -d --build
+    - name: Wait for services to be ready
+      shell: pwsh
+      run: |
+        Write-Host "Waiting for Traefik API to be ready..."
+        $timeout = 60
+        $elapsed = 0
+        do {
+          try {
+            $response = Invoke-WebRequest -Uri "http://localhost:8080/api/rawdata" -Method Get -TimeoutSec 5 -UseBasicParsing
+            if ($response.StatusCode -eq 200) { break }
+          } catch { }
+          Start-Sleep 2
+          $elapsed += 2
+        } while ($elapsed -lt $timeout)
+        
+        Write-Host "Waiting for whoami services to be ready..."
+        $elapsed = 0
+        do {
+          try {
+            $response = Invoke-WebRequest -Uri "http://localhost:8000/plain" -Method Get -TimeoutSec 5 -UseBasicParsing
+            if ($response.StatusCode -eq 200) { break }
+          } catch { }
+          Start-Sleep 2
+          $elapsed += 2
+        } while ($elapsed -lt $timeout)
+        
+        Write-Host "Services are ready!"
+    - name: Run integration tests
+      shell: pwsh
+      run: |
+        Import-Module Pester -Force
+        Invoke-Pester -Path ./scripts/integration-tests.Tests.ps1 -Output Detailed
+    - name: Show logs on failure
+      if: failure()
+      run: |
+        echo "=== Traefik logs ==="
+        docker compose logs traefik
+        echo "=== Plain Whoami logs ==="
+        docker compose logs whoami-plain
+        echo "=== ModSecurity Whoami logs ==="
+        docker compose logs whoami-modsecurity
+        echo "=== Geoblock Whoami logs ==="
+        docker compose logs whoami-geoblock
+        echo "=== CrowdSec Whoami logs ==="
+        docker compose logs whoami-crowdsec
+        echo "=== WAF logs ==="
+        docker compose logs waf
+        echo "=== CrowdSec logs ==="
+        docker compose logs crowdsec
+        echo "=== Dummy backend logs ==="
+        docker compose logs dummy
+    - name: Cleanup
+      if: always()
+      run: docker compose down -v
   push_to_registry:
     permissions:
       id-token: write
@@ -11,6 +94,7 @@ jobs:
     environment: DOCKERHUB_USERNAME
     name: push docker image to hub
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
     env:
       REGISTRY: docker.io
       IMAGE_NAME: davidbcn86/traefik-with-plugins

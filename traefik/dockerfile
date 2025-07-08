@@ -1,7 +1,7 @@
 ## https://traefik.io/blog/using-private-plugins-in-traefik-proxy-2-5/
 
 # Stage 1: Clone the repositories and checkout specific tags (builder stage)
-FROM golang:1.19-alpine AS builder
+FROM golang:1.24.3-alpine3.21 AS builder
 
 # Install git in the builder container
 RUN set -eux; \
@@ -10,19 +10,20 @@ RUN set -eux; \
 # Create the directory for the plugins
 RUN set -eux; \
     mkdir -p /plugins-local/src/github.com/madebymode && \
-    mkdir -p /plugins-local/src/github.com/jcchavezs && \
-    mkdir -p /plugins-local/src/github.com/nscuro && \
     mkdir -p /plugins-local/src/github.com/sablierapp && \
+    mkdir -p /plugins-local/src/github.com/david-garcia-garcia && \
     mkdir -p /plugins-local/src/github.com/maxlerebourg
 
 RUN set -eux && git clone https://github.com/david-garcia-garcia/traefik-modsecurity-plugin /plugins-local/src/github.com/madebymode/traefik-modsecurity-plugin --branch backoff --single-branch
-RUN set -eux && git clone https://github.com/jcchavezs/coraza-http-wasm-traefik /plugins-local/src/github.com/jcchavezs/coraza-http-wasm-traefik --branch v0.3.0 --single-branch
-RUN set -eux && git clone https://github.com/david-garcia-garcia/traefik-plugin-geoblock /plugins-local/src/github.com/nscuro/traefik-plugin-geoblock --branch v1.0.0-beta.13 --single-branch
 RUN set -eux && git clone https://github.com/sablierapp/sablier /plugins-local/src/github.com/sablierapp/sablier --branch v1.8.1 --single-branch
 RUN set -eux && git clone https://github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin /plugins-local/src/github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin --branch reportmetrics.2 --single-branch
+RUN set -eux && git clone https://github.com/david-garcia-garcia/traefik-geoblock /plugins-local/src/github.com/david-garcia-garcia/traefik-geoblock --branch v1.1.0-beta.2 --single-branch
 
 # Stage 2: Copy the plugins
 FROM traefik:3.1.7
+
+# To make sure that if database location changes, the plugin will still works
+ENV TRAEFIK_PLUGIN_GEOBLOCK_PATH=/plugins-local/src/github.com/david-garcia-garcia/traefik-geoblock
 
 # Copy the plugins from the builder stage
 COPY --from=builder /plugins-local /plugins-local
