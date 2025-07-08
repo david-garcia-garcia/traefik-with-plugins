@@ -15,6 +15,9 @@ entryPoints:
     address: ":443"
 log:
   level: "TRACE"
+api:
+  dashboard: true
+  insecure: true
 providers:
   docker:
     exposedByDefault: false
