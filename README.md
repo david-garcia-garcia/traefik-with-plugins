@@ -33,7 +33,7 @@ Built images are available at:
 
 | Plugin | Repository | Version/Branch |
 |--------|------------|----------------|
-| **ModSecurity** | [madebymode/traefik-modsecurity-plugin](https://github.com/madebymode/traefik-modsecurity-plugin) | `backoff` |
+| **ModSecurity** | [david-garcia-garcia/traefik-modsecurity](https://github.com/david-garcia-garcia/traefik-modsecurity) | `v1.7.0` |
 | **Geoblock** | [david-garcia-garcia/traefik-geoblock](https://github.com/david-garcia-garcia/traefik-geoblock) | `v1.1.0-beta.2` |
 | **Sablier** | [sablierapp/sablier](https://github.com/sablierapp/sablier) | `v1.8.1` |
 | **CrowdSec Bouncer** | [maxlerebourg/crowdsec-bouncer-traefik-plugin](https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin) | `reportmetrics.2` |
@@ -46,7 +46,7 @@ The plugins are configured in `traefik.yml` as:
 experimental:
   localPlugins:
     modsecurity:
-      moduleName: "github.com/madebymode/traefik-modsecurity-plugin"
+      moduleName: "github.com/david-garcia-garcia/traefik-modsecurity"
     geoblock:
       moduleName: "github.com/david-garcia-garcia/traefik-geoblock"
     sablier:

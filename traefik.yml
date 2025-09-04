@@ -1,7 +1,7 @@
 experimental:
   localPlugins:
     modsecurity:
-      moduleName: "github.com/madebymode/traefik-modsecurity-plugin"
+      moduleName: "github.com/david-garcia-garcia/traefik-modsecurity"
     geoblock:
       moduleName: "github.com/david-garcia-garcia/traefik-geoblock"
     sablier:
