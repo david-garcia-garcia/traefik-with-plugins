@@ -16,7 +16,7 @@ RUN set -eux; \
 RUN set -eux && git clone https://github.com/david-garcia-garcia/traefik-modsecurity /plugins-local/src/github.com/david-garcia-garcia/traefik-modsecurity --branch v1.7.0 --single-branch
 RUN set -eux && git clone https://github.com/sablierapp/sablier /plugins-local/src/github.com/sablierapp/sablier --branch v1.8.1 --single-branch
 RUN set -eux && git clone https://github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin /plugins-local/src/github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin --branch 20250722b --single-branch
-RUN set -eux && git clone https://github.com/david-garcia-garcia/traefik-geoblock /plugins-local/src/github.com/david-garcia-garcia/traefik-geoblock --branch v1.1.1 --single-branch
+RUN set -eux && git clone https://github.com/david-garcia-garcia/traefik-geoblock /plugins-local/src/github.com/david-garcia-garcia/traefik-geoblock --branch v1.1.2-beta.0 --single-branch
 
 # Stage 2: Copy the plugins
 FROM traefik:3.1.7
