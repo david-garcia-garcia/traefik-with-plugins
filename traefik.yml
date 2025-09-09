@@ -8,6 +8,8 @@ experimental:
       moduleName: "github.com/sablierapp/sablier"
     bouncer:
       moduleName: "github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
+    realip:
+      moduleName: "github.com/david-garcia-garcia/traefik-realip"
 entryPoints:
   web:
     address: ":80"
