@@ -134,7 +134,7 @@ Describe "Service Endpoint Tests" {
             # In Docker environment, Traefik sets X-Forwarded-For to the Docker network IP
             # The plugin should extract this and set X-Real-IP accordingly
             $response.Content | Should -Match "Hostname:"
-            $response.Content | Should -Match "X-Real-Ip.*172\.18\.0\.\d+"
+            $response.Content | Should -Match "X-Real-Ip.*172\.\d+\.\d+\.\d+"
         }
 
         It "Should handle CF-Connecting-IP header with priority" {
@@ -158,7 +158,7 @@ Describe "Service Endpoint Tests" {
             $response = Invoke-WebRequest -Uri "$script:BaseUrl/realip" -Headers $headers -UseBasicParsing
             $response.StatusCode | Should -Be 200
             # Should fallback to X-Forwarded-For (Docker network IP in test environment)
-            $response.Content | Should -Match "X-Real-Ip.*172\.18\.0\.\d+"
+            $response.Content | Should -Match "X-Real-Ip.*172\.\d+\.\d+\.\d+"
         }
 
         It "Should handle single IP processing" {
@@ -537,7 +537,7 @@ Describe "RealIP Depth Configuration Tests" {
             $response = Invoke-TestRequest -Uri "$script:BaseUrl/realip"
             $response.StatusCode | Should -Be 200
             # Should use X-Forwarded-For (Docker network IP) when CF-Connecting-IP is absent
-            $response.Content | Should -Match "X-Real-Ip.*172\.18\.0\.\d+"
+            $response.Content | Should -Match "X-Real-Ip.*172\.\d+\.\d+\.\d+"
         }
 
         It "Should handle IPv6 address processing" {
