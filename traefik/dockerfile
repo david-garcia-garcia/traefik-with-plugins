@@ -20,7 +20,7 @@ RUN set -eux && git clone https://github.com/david-garcia-garcia/traefik-geobloc
 RUN set -eux && git clone https://github.com/david-garcia-garcia/traefik-realip /plugins-local/src/github.com/david-garcia-garcia/traefik-realip --branch v1.0.0-beta.3 --single-branch
 
 # Stage 2: Copy the plugins
-FROM traefik:3.1.7
+FROM traefik:3.5.3
 
 # To make sure that if database location changes, the plugin will still works
 ENV TRAEFIK_PLUGIN_GEOBLOCK_PATH=/plugins-local/src/github.com/david-garcia-garcia/traefik-geoblock
