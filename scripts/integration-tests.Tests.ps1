@@ -607,4 +607,46 @@ Describe "RealIP Depth Configuration Tests" {
             $response.Content | Should -Match "X-Real-Ip.*(2001:db8::1|\[2001:db8::1\])"
         }
     }
+}
+
+Describe "Traefik Container Health Tests" {
+    Context "Container Logs and Error Checking" {
+        It "Should have no errors in Traefik container logs" {
+            # Get the Traefik container logs
+            $logs = docker logs traefik-with-plugins-traefik-1 2>&1
+            
+            # Check for ERROR level messages
+            $errorLines = $logs | Where-Object { $_ -match "ERR " }
+            
+            # If there are errors, display them for debugging
+            if ($errorLines) {
+                Write-Host "Found ERROR messages in Traefik logs:" -ForegroundColor Yellow
+                $errorLines | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+            }
+            
+            # The test should fail if there are any ERROR level messages
+            $errorLines.Count | Should -Be 0 -Because "Traefik should start without any ERROR level messages"
+        }
+        
+        It "Should have successful plugin loading messages" {
+            # Get the Traefik container logs
+            $logs = docker logs traefik-with-plugins-traefik-1 2>&1
+            
+            # Check for successful plugin loading indicators
+            $successMessages = $logs | Where-Object { 
+                $_ -match "Building embedded plugin" -or 
+                $_ -match "Using embedded plugin" -or 
+                $_ -match "Embedded plugin.*completed" 
+            }
+            
+            # Should have some plugin loading success messages if plugins are used
+            if ($successMessages) {
+                Write-Host "Found plugin loading success messages:" -ForegroundColor Green
+                $successMessages | ForEach-Object { Write-Host "  $_" -ForegroundColor Green }
+            }
+            
+            # This is informational - we just want to see the messages
+            $successMessages | Should -Not -BeNullOrEmpty -Because "Should see embedded plugin loading messages"
+        }
+    }
 } 
