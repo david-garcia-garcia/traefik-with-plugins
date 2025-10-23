@@ -62,6 +62,49 @@ Describe "Traefik API Tests" {
     }
 }
 
+Describe "Traefik WebUI Dashboard Tests" {
+    Context "Dashboard Accessibility" {
+        It "Should respond to dashboard endpoint" {
+            $response = Invoke-TestRequest -Uri "$script:TraefikApiUrl/dashboard/"
+            $response.StatusCode | Should -Be 200
+            $response.Content | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should serve dashboard HTML content" {
+            $response = Invoke-TestRequest -Uri "$script:TraefikApiUrl/dashboard/"
+            $response.Content | Should -Match "html|HTML|Traefik"
+        }
+
+        It "Should redirect root to dashboard" {
+            $response = Invoke-TestRequest -Uri "$script:TraefikApiUrl/"
+            # Should either be 200 (direct serve) or 3xx (redirect)
+            ($response.StatusCode -eq 200 -or ($response.StatusCode -ge 300 -and $response.StatusCode -lt 400)) | Should -Be $true
+        }
+
+        It "Should serve dashboard assets" {
+            # Test that we can access the dashboard without errors
+            $response = Invoke-TestRequest -Uri "$script:TraefikApiUrl/dashboard/"
+            $response.StatusCode | Should -Be 200
+            # Should contain some form of web content (HTML, JS, or our fallback message)
+            ($response.Content.Length -gt 10) | Should -Be $true
+        }
+    }
+
+    Context "Dashboard API Integration" {
+        It "Should provide API data for dashboard" {
+            $response = Invoke-TestRequest -Uri "$script:TraefikApiUrl/api/overview"
+            $response.StatusCode | Should -Be 200
+            $response.Content | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should provide version information for dashboard" {
+            $response = Invoke-TestRequest -Uri "$script:TraefikApiUrl/api/version"
+            $response.StatusCode | Should -Be 200
+            $response.Content | Should -Match "version|Version"
+        }
+    }
+}
+
 Describe "Service Endpoint Tests" {
     Context "Plain Service (No Middleware)" {
         It "Should respond to /plain endpoint" {

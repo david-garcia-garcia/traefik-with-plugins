@@ -1,28 +1,26 @@
-# Traefik Image (with plugins)
+# Traefik with Embedded Plugins
 
-[Traefik](https://traefik.io/) image with embeded plugins. 
+[Traefik](https://traefik.io/) image with **natively compiled** plugins for maximum performance.
 
-You need to add plugins to your traefik images because:
+## Why Embedded Plugins?
 
-* You don't want your Traefik pods not to start when Traefik's plugin repository is down
-* Traefik pods start much faster if they don't have to pull the plugins every time they start
+**Performance**: Plugins are compiled directly into the Traefik binary instead of being interpreted via Yaegi at runtime, resulting in:
+- 🚀 **Faster startup** - No plugin downloading or compilation
+- ⚡ **Better performance** - Native code execution (no interpreter overhead)
+- 🔒 **More reliable** - No dependency on external plugin repositories
+- 📦 **Smaller footprint** - Single binary with everything included
 
-See:
+## Quick Start
 
-* [Embedding plugins beforehand to avoid on-startup compiling - Traefik / Traefik v2 - Traefik Labs Community Forum](https://community.traefik.io/t/embedding-plugins-beforehand-to-avoid-on-startup-compiling/16816/4)
-* [traefik/plugindemo: This repository includes an example plugin, for you to use as a reference for developing your own plugins](https://github.com/traefik/plugindemo#local-mode)
-
-To build the image locally use:
+Build and run locally:
 
 ```powershell
-.\build -StartContainers
+docker-compose up -d --build
 ```
 
-The project includes a sample traefik.yml
+Or use pre-built images from Docker Hub:
 
-Built images are available at:
-
-[davidbcn86/traefik-with-plugins general | Docker Hub](https://hub.docker.com/repository/docker/davidbcn86/traefik-with-plugins/general)
+[davidbcn86/traefik-with-plugins](https://hub.docker.com/repository/docker/davidbcn86/traefik-with-plugins/general)
 
 # Current container state
 

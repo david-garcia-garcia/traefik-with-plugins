@@ -33,6 +33,13 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y powershell
         pwsh -c "Install-Module -Name Pester -Force -Scope CurrentUser -SkipPublisherCheck"
+    - name: Setup Node.js for Cypress
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    - name: Install Cypress and dependencies
+      run: npm ci
     - name: Start services
       run: docker compose up -d --build
     - name: Wait for services to be ready
@@ -62,11 +69,20 @@ jobs:
         } while ($elapsed -lt $timeout)
         
         Write-Host "Services are ready!"
-    - name: Run integration tests
+    - name: Run Pester integration tests
       shell: pwsh
       run: |
         Import-Module Pester -Force
         Invoke-Pester -Path ./scripts/integration-tests.Tests.ps1 -Output Detailed
+    - name: Run Cypress dashboard UI tests
+      run: npm run test:dashboard
+    - name: Upload Cypress screenshots on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: cypress-screenshots
+        path: cypress/screenshots
+        if-no-files-found: ignore
     - name: Show logs on failure
       if: failure()
       run: |
@@ -123,6 +139,7 @@ jobs:
           test_var: true
         with:
           context: ./traefik
+          file: ./traefik/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
