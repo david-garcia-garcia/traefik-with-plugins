@@ -6,7 +6,7 @@ services:
       - .env
     build:
       context: ./traefik
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
       args:
         - TRAEFIK_REPO=${TRAEFIK_REPO}
         - TRAEFIK_VERSION=${TRAEFIK_VERSION}
@@ -28,6 +28,7 @@ services:
       - "geoblock-data:/data/autoupdate"
     ports:
       - 8000:80
+      - 8443:443
       - 8080:8080
     depends_on:
       - waf
@@ -120,6 +121,19 @@ services:
       - "traefik.http.middlewares.realip.plugin.realip.processHeaders[2].headerName=clientAddress"
       - "traefik.http.middlewares.realip.plugin.realip.processHeaders[2].depth=-1"
       - "traefik.http.middlewares.realip.plugin.realip.forceOverwrite=true"
+
+  # Service 6: Whoami with TLS (self-signed certificate for testing)
+  whoami-tls:
+    image: traefik/whoami
+    container_name: "whoami-tls"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tls-router.rule=Host(`test.localhost`)"
+      - "traefik.http.routers.tls-router.entrypoints=websecure"
+      - "traefik.http.routers.tls-router.tls=true"
+      - "traefik.http.services.tls-service.loadbalancer.server.port=80"
+
   # ModSecurity WAF service
   waf:
     image: owasp/modsecurity-crs:4.3.0-apache-alpine-202406090906

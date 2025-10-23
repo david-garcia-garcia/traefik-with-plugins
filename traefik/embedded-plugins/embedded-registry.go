@@ -77,6 +77,11 @@ var EmbeddedPluginRegistry = buildPluginRegistry()
 func buildPluginRegistry() map[string]embeddedPluginDescriptor {
 	registry := make(map[string]embeddedPluginDescriptor)
 
+	log.Debug().
+		Int("basePluginCount", len(basePluginRegistry)).
+		Interface("basePlugins", getBasePluginNames()).
+		Msg("Starting embedded plugin registry build")
+
 	for defaultName, descriptor := range basePluginRegistry {
 		// Build environment variable name from plugin name
 		// e.g., "crowdsec" -> "TRAEFIK_EMBEDDED_CROWDSEC_KEY"
@@ -86,34 +91,88 @@ func buildPluginRegistry() map[string]embeddedPluginDescriptor {
 		if customName := strings.TrimSpace(os.Getenv(envVarName)); customName != "" {
 			// Register with custom name
 			registry[customName] = descriptor
-			log.Info().
-				Str("plugin", defaultName).
-				Str("customKey", customName).
-				Str("envVar", envVarName).
-				Msg("Embedded plugin registered with custom key")
 		} else {
 			// Register with default name
 			registry[defaultName] = descriptor
 		}
 	}
 
+	// Log final registry for debugging
+	finalPlugins := make([]string, 0, len(registry))
+	for k := range registry {
+		finalPlugins = append(finalPlugins, k)
+	}
+
+	log.Debug().
+		Int("finalRegistrySize", len(registry)).
+		Interface("finalPluginKeys", finalPlugins).
+		Interface("finalRegistryMap", getRegistryDebugInfo(registry)).
+		Msg("Embedded plugin registry build completed")
+
 	return registry
+}
+
+// getBasePluginNames returns the base plugin names for debugging
+func getBasePluginNames() []string {
+	names := make([]string, 0, len(basePluginRegistry))
+	for name := range basePluginRegistry {
+		names = append(names, name)
+	}
+	return names
+}
+
+// getRegistryDebugInfo returns debug info about the registry
+func getRegistryDebugInfo(registry map[string]embeddedPluginDescriptor) map[string]string {
+	debugInfo := make(map[string]string)
+	for key := range registry {
+		debugInfo[key] = "registered"
+	}
+	return debugInfo
+}
+
+// getRegistryKeys returns all keys in the embedded plugin registry
+func getRegistryKeys() []string {
+	keys := make([]string, 0, len(EmbeddedPluginRegistry))
+	for k := range EmbeddedPluginRegistry {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // IsEmbeddedPlugin checks if a plugin name is in the embedded registry
 func IsEmbeddedPlugin(pluginName string) bool {
 	_, exists := EmbeddedPluginRegistry[pluginName]
+
+	log.Debug().
+		Str("pluginName", pluginName).
+		Bool("exists", exists).
+		Int("registrySize", len(EmbeddedPluginRegistry)).
+		Msg("IsEmbeddedPlugin check")
+
 	return exists
 }
 
 // BuildEmbeddedPlugin builds an embedded plugin middleware using the same approach as Yaegi
 func BuildEmbeddedPlugin(ctx context.Context, pluginName string, config map[string]interface{}, middlewareName string) (Constructor, error) {
+	log.Debug().
+		Str("pluginName", pluginName).
+		Str("middlewareName", middlewareName).
+		Interface("config", config).
+		Msg("BuildEmbeddedPlugin called")
+
 	descriptor, exists := EmbeddedPluginRegistry[pluginName]
 	if !exists {
+		log.Error().
+			Str("pluginName", pluginName).
+			Interface("availablePlugins", getRegistryKeys()).
+			Msg("BuildEmbeddedPlugin: plugin not found in registry")
 		return nil, fmt.Errorf("unknown embedded plugin: %s", pluginName)
 	}
 
-	log.Ctx(ctx).Debug().Str("plugin", pluginName).Str("middleware", middlewareName).Msg("Building embedded plugin")
+	log.Debug().
+		Str("plugin", pluginName).
+		Str("middleware", middlewareName).
+		Msg("Building embedded plugin - descriptor found")
 
 	// Create config using CreateConfig() - same as Yaegi
 	cfg := descriptor.createConfig()
