@@ -42,7 +42,8 @@ RUN set -eux; \
 WORKDIR /build
 
 # Clone Traefik upstream repository
-RUN echo "Cloning Traefik from https://${TRAEFIK_REPO}.git branch ${TRAEFIK_VERSION}" && \
+RUN set -eux; \
+    echo "Cloning Traefik from https://${TRAEFIK_REPO}.git branch ${TRAEFIK_VERSION}" && \
     git clone https://${TRAEFIK_REPO}.git --branch ${TRAEFIK_VERSION} --single-branch --depth 1
 
 # Clone plugin repositories into the Traefik source tree
@@ -52,50 +53,80 @@ WORKDIR /build/traefik
 COPY embedded-plugins/ pkg/middlewares/plugins/
 
 # Copy embedded plugin registry to plugins package
-RUN cp pkg/middlewares/plugins/embedded-registry.go pkg/plugins/
+RUN set -eux; \
+    cp pkg/middlewares/plugins/embedded-registry.go pkg/plugins/
 
 # Apply embedded plugin patch to builder
-RUN patch -p0 < pkg/middlewares/plugins/builder.patch
+RUN set -eux; \
+    patch -p0 < pkg/middlewares/plugins/builder.patch
 
 # Add plugin dependencies directly using their published versions
-RUN go mod edit -require=${PLUGIN_MODSECURITY_REPO}@${PLUGIN_MODSECURITY_VERSION}
-RUN go mod edit -require=${PLUGIN_SABLIER_REPO}@${PLUGIN_SABLIER_VERSION}
-RUN go mod edit -require=${PLUGIN_CROWDSEC_REPO}@${PLUGIN_CROWDSEC_VERSION}
-RUN go mod edit -require=${PLUGIN_GEOBLOCK_REPO}@${PLUGIN_GEOBLOCK_VERSION}
-RUN go mod edit -require=${PLUGIN_REALIP_REPO}@${PLUGIN_REALIP_VERSION}
+RUN set -eux; \
+    go mod edit -require=${PLUGIN_MODSECURITY_REPO}@${PLUGIN_MODSECURITY_VERSION} && \
+    go mod edit -require=${PLUGIN_SABLIER_REPO}@${PLUGIN_SABLIER_VERSION} && \
+    go mod edit -require=${PLUGIN_CROWDSEC_REPO}@${PLUGIN_CROWDSEC_VERSION} && \
+    go mod edit -require=${PLUGIN_GEOBLOCK_REPO}@${PLUGIN_GEOBLOCK_VERSION} && \
+    go mod edit -require=${PLUGIN_REALIP_REPO}@${PLUGIN_REALIP_VERSION}
 
 # Download dependencies
-RUN go mod download
-RUN go mod tidy
+RUN set -eux; \
+    go mod download && \
+    go mod tidy
 
 # Build WebUI directly using Node.js (MUST be before binary build for go:embed)
 WORKDIR /build/traefik/webui
-RUN npm install
-RUN npm run build
+RUN set -eux; \
+    npm install && \
+    npm run build
 
-# Clone plugins for runtime assets (HTML templates, databases)
-WORKDIR /plugins-local/src/github.com/david-garcia-garcia
-RUN git clone https://${PLUGIN_GEOBLOCK_REPO}.git --branch ${PLUGIN_GEOBLOCK_VERSION} --single-branch
-
-WORKDIR /plugins-local/src/github.com/maxlerebourg
-RUN git clone https://${PLUGIN_CROWDSEC_REPO}.git --branch ${PLUGIN_CROWDSEC_VERSION} --single-branch
+# Clone ALL plugins to plugins-local - extract org names from repo URLs
+RUN set -eux; \
+    # Extract organization names from repo URLs and create directories dynamically \
+    GEOBLOCK_ORG=$(echo "${PLUGIN_GEOBLOCK_REPO}" | cut -d'/' -f2) && \
+    MODSECURITY_ORG=$(echo "${PLUGIN_MODSECURITY_REPO}" | cut -d'/' -f2) && \
+    REALIP_ORG=$(echo "${PLUGIN_REALIP_REPO}" | cut -d'/' -f2) && \
+    CROWDSEC_ORG=$(echo "${PLUGIN_CROWDSEC_REPO}" | cut -d'/' -f2) && \
+    SABLIER_ORG=$(echo "${PLUGIN_SABLIER_REPO}" | cut -d'/' -f2) && \
+    \
+    # Clone all plugins to their proper organization directories \
+    mkdir -p "/plugins-local/src/github.com/${GEOBLOCK_ORG}" && \
+    cd "/plugins-local/src/github.com/${GEOBLOCK_ORG}" && \
+    git clone "https://${PLUGIN_GEOBLOCK_REPO}.git" --branch "${PLUGIN_GEOBLOCK_VERSION}" --single-branch && \
+    \
+    mkdir -p "/plugins-local/src/github.com/${MODSECURITY_ORG}" && \
+    cd "/plugins-local/src/github.com/${MODSECURITY_ORG}" && \
+    git clone "https://${PLUGIN_MODSECURITY_REPO}.git" --branch "${PLUGIN_MODSECURITY_VERSION}" --single-branch && \
+    \
+    mkdir -p "/plugins-local/src/github.com/${REALIP_ORG}" && \
+    cd "/plugins-local/src/github.com/${REALIP_ORG}" && \
+    git clone "https://${PLUGIN_REALIP_REPO}.git" --branch "${PLUGIN_REALIP_VERSION}" --single-branch && \
+    \
+    mkdir -p "/plugins-local/src/github.com/${CROWDSEC_ORG}" && \
+    cd "/plugins-local/src/github.com/${CROWDSEC_ORG}" && \
+    git clone "https://${PLUGIN_CROWDSEC_REPO}.git" --branch "${PLUGIN_CROWDSEC_VERSION}" --single-branch && \
+    \
+    mkdir -p "/plugins-local/src/github.com/${SABLIER_ORG}" && \
+    cd "/plugins-local/src/github.com/${SABLIER_ORG}" && \
+    git clone "https://${PLUGIN_SABLIER_REPO}.git" --branch "${PLUGIN_SABLIER_VERSION}" --single-branch
 
 # Build Traefik binary with embedded plugins (WebUI gets embedded via go:embed)
 WORKDIR /build/traefik
-RUN mkdir -p dist/linux/amd64
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -installsuffix nocgo -o "./dist/linux/amd64/traefik" ./cmd/traefik
+RUN set -eux; \
+    mkdir -p dist/linux/amd64 && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -installsuffix nocgo -o "./dist/linux/amd64/traefik" ./cmd/traefik
 
 # Stage 2: Final runtime image
 FROM alpine:3.22
 
-RUN apk add --no-cache --no-progress ca-certificates tzdata
+RUN set -eux; \
+    apk add --no-cache --no-progress ca-certificates tzdata
 
 # Copy the built binary from builder stage (WebUI is already embedded inside via go:embed)
 COPY --from=builder /build/traefik/dist/linux/amd64/traefik /traefik
 
-# Copy plugin assets for runtime (HTML templates, databases)
-COPY --from=builder /plugins-local/src/github.com/david-garcia-garcia/traefik-geoblock /plugins-local/src/github.com/david-garcia-garcia/traefik-geoblock
-COPY --from=builder /plugins-local/src/github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin /plugins-local/src/github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+# Copy ALL plugin assets for runtime - using dynamic paths from build stage
+# Note: Since COPY doesn't support shell expansion, we need to copy the entire plugins-local tree
+COPY --from=builder /plugins-local /plugins-local
 
 # Set environment variables for plugin paths
 ENV TRAEFIK_PLUGIN_GEOBLOCK_PATH=/plugins-local/src/github.com/david-garcia-garcia/traefik-geoblock

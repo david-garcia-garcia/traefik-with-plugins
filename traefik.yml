@@ -11,3 +11,11 @@ api:
 providers:
   docker:
     exposedByDefault: false
+# TLS configuration for testing self-signed certificates
+tls:
+  # Enable default certificate generation for unmatched domains
+  options:
+    default:
+      sslProtocols:
+        - "TLSv1.2"
+        - "TLSv1.3"
