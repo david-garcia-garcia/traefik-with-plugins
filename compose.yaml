@@ -2,9 +2,24 @@ services:
   traefik:
     image: traefik-with-plugins:latest
     restart: unless-stopped
+    env_file:
+      - .env
     build:
       context: ./traefik
       dockerfile: Dockerfile
+      args:
+        - TRAEFIK_REPO=${TRAEFIK_REPO}
+        - TRAEFIK_VERSION=${TRAEFIK_VERSION}
+        - PLUGIN_MODSECURITY_REPO=${PLUGIN_MODSECURITY_REPO}
+        - PLUGIN_MODSECURITY_VERSION=${PLUGIN_MODSECURITY_VERSION}
+        - PLUGIN_REALIP_REPO=${PLUGIN_REALIP_REPO}
+        - PLUGIN_REALIP_VERSION=${PLUGIN_REALIP_VERSION}
+        - PLUGIN_GEOBLOCK_REPO=${PLUGIN_GEOBLOCK_REPO}
+        - PLUGIN_GEOBLOCK_VERSION=${PLUGIN_GEOBLOCK_VERSION}
+        - PLUGIN_CROWDSEC_REPO=${PLUGIN_CROWDSEC_REPO}
+        - PLUGIN_CROWDSEC_VERSION=${PLUGIN_CROWDSEC_VERSION}
+        - PLUGIN_SABLIER_REPO=${PLUGIN_SABLIER_REPO}
+        - PLUGIN_SABLIER_VERSION=${PLUGIN_SABLIER_VERSION}
     volumes:
       # Mount traefik config to the container's /etc/traefik/traefik.yml
       - ./traefik.yml:/etc/traefik/traefik.yml

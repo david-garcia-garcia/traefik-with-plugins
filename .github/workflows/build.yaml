@@ -131,17 +131,34 @@ jobs:
         with:
           images: davidbcn86/traefik-with-plugins
       
+      - name: Load version variables
+        run: |
+          set -a
+          source versions.env
+          set +a
+          echo "TRAEFIK_VERSION=${TRAEFIK_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_MODSECURITY_VERSION=${PLUGIN_MODSECURITY_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_REALIP_VERSION=${PLUGIN_REALIP_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_GEOBLOCK_VERSION=${PLUGIN_GEOBLOCK_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_CROWDSEC_VERSION=${PLUGIN_CROWDSEC_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_SABLIER_VERSION=${PLUGIN_SABLIER_VERSION}" >> $GITHUB_ENV
+      
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
-        env:
-          test_var: true
         with:
           context: ./traefik
           file: ./traefik/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            TRAEFIK_VERSION=${{ env.TRAEFIK_VERSION }}
+            PLUGIN_MODSECURITY_VERSION=${{ env.PLUGIN_MODSECURITY_VERSION }}
+            PLUGIN_REALIP_VERSION=${{ env.PLUGIN_REALIP_VERSION }}
+            PLUGIN_GEOBLOCK_VERSION=${{ env.PLUGIN_GEOBLOCK_VERSION }}
+            PLUGIN_CROWDSEC_VERSION=${{ env.PLUGIN_CROWDSEC_VERSION }}
+            PLUGIN_SABLIER_VERSION=${{ env.PLUGIN_SABLIER_VERSION }}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
@@ -149,3 +166,37 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+  
+  create_release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: push_to_registry
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Load versions and generate release notes
+        id: release_notes
+        run: |
+          source .env
+          chmod +x scripts/generate-release-notes.sh
+          RELEASE_NOTES=$(./scripts/generate-release-notes.sh .env)
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Set version info for release title
+          echo "traefik_version=${TRAEFIK_VERSION}" >> $GITHUB_OUTPUT
+          echo "plugin_count=5" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Traefik ${{ steps.release_notes.outputs.traefik_version }} with ${{ steps.release_notes.outputs.plugin_count }} Embedded Plugins"
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: false
+          prerelease: false
+          generate_release_notes: false

@@ -1,8 +1,38 @@
-# Multi-stage build for Traefik with embedded plugins
+# Multi-stage build for Traefik with embedded plugins  
 # This dockerfile builds Traefik from source with plugins compiled directly into the binary
+# Versions are controlled via versions.env
+
+# Build arguments for versions and repositories (from .env)
+# Repository paths are stored without https:// prefix
+ARG TRAEFIK_REPO
+ARG TRAEFIK_VERSION
+ARG PLUGIN_MODSECURITY_REPO
+ARG PLUGIN_MODSECURITY_VERSION
+ARG PLUGIN_REALIP_REPO
+ARG PLUGIN_REALIP_VERSION
+ARG PLUGIN_GEOBLOCK_REPO
+ARG PLUGIN_GEOBLOCK_VERSION
+ARG PLUGIN_CROWDSEC_REPO
+ARG PLUGIN_CROWDSEC_VERSION
+ARG PLUGIN_SABLIER_REPO
+ARG PLUGIN_SABLIER_VERSION
 
 # Stage 1: Build stage with Go and Git
 FROM golang:1.24.3-alpine3.21 AS builder
+
+# Re-declare ARGs after FROM to make them available in this stage
+ARG TRAEFIK_REPO
+ARG TRAEFIK_VERSION
+ARG PLUGIN_MODSECURITY_REPO
+ARG PLUGIN_MODSECURITY_VERSION
+ARG PLUGIN_REALIP_REPO
+ARG PLUGIN_REALIP_VERSION
+ARG PLUGIN_GEOBLOCK_REPO
+ARG PLUGIN_GEOBLOCK_VERSION
+ARG PLUGIN_CROWDSEC_REPO
+ARG PLUGIN_CROWDSEC_VERSION
+ARG PLUGIN_SABLIER_REPO
+ARG PLUGIN_SABLIER_VERSION
 
 # Install required tools
 RUN set -eux; \
@@ -11,8 +41,9 @@ RUN set -eux; \
 # Set working directory
 WORKDIR /build
 
-# Clone Traefik upstream repository from official repo
-RUN git clone https://github.com/traefik/traefik.git --branch v3.5.3 --single-branch --depth 1
+# Clone Traefik upstream repository
+RUN echo "Cloning Traefik from https://${TRAEFIK_REPO}.git branch ${TRAEFIK_VERSION}" && \
+    git clone https://${TRAEFIK_REPO}.git --branch ${TRAEFIK_VERSION} --single-branch --depth 1
 
 # Clone plugin repositories into the Traefik source tree
 WORKDIR /build/traefik
@@ -27,11 +58,11 @@ RUN cp pkg/middlewares/plugins/embedded-registry.go pkg/plugins/
 RUN patch -p0 < pkg/middlewares/plugins/builder.patch
 
 # Add plugin dependencies directly using their published versions
-RUN go mod edit -require=github.com/david-garcia-garcia/traefik-modsecurity@v1.7.0
-RUN go mod edit -require=github.com/sablierapp/sablier@v1.10.1
-RUN go mod edit -require=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin@v1.4.5
-RUN go mod edit -require=github.com/david-garcia-garcia/traefik-geoblock@v1.1.2-beta.0
-RUN go mod edit -require=github.com/david-garcia-garcia/traefik-realip@v1.0.0-beta.3
+RUN go mod edit -require=${PLUGIN_MODSECURITY_REPO}@${PLUGIN_MODSECURITY_VERSION}
+RUN go mod edit -require=${PLUGIN_SABLIER_REPO}@${PLUGIN_SABLIER_VERSION}
+RUN go mod edit -require=${PLUGIN_CROWDSEC_REPO}@${PLUGIN_CROWDSEC_VERSION}
+RUN go mod edit -require=${PLUGIN_GEOBLOCK_REPO}@${PLUGIN_GEOBLOCK_VERSION}
+RUN go mod edit -require=${PLUGIN_REALIP_REPO}@${PLUGIN_REALIP_VERSION}
 
 # Download dependencies
 RUN go mod download
@@ -44,10 +75,10 @@ RUN npm run build
 
 # Clone plugins for runtime assets (HTML templates, databases)
 WORKDIR /plugins-local/src/github.com/david-garcia-garcia
-RUN git clone https://github.com/david-garcia-garcia/traefik-geoblock --branch v1.1.2-beta.0 --single-branch
+RUN git clone https://${PLUGIN_GEOBLOCK_REPO}.git --branch ${PLUGIN_GEOBLOCK_VERSION} --single-branch
 
 WORKDIR /plugins-local/src/github.com/maxlerebourg
-RUN git clone https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin --branch v1.4.5 --single-branch
+RUN git clone https://${PLUGIN_CROWDSEC_REPO}.git --branch ${PLUGIN_CROWDSEC_VERSION} --single-branch
 
 # Build Traefik binary with embedded plugins (WebUI gets embedded via go:embed)
 WORKDIR /build/traefik

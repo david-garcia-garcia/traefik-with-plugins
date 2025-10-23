@@ -150,12 +150,26 @@ npm run test:dashboard
 
 ## How It Works
 
+### Version Management
+
+All versions are centralized in `versions.json`:
+- Traefik version
+- Plugin versions (used for both compilation and runtime assets)
+
+This ensures consistency across the build, documentation, and releases.
+
+**To update versions**: Edit `versions.json` and the Dockerfile will use those versions for:
+- Docker build process (plugin compilation)
+- Runtime assets (geoblock databases, crowdsec HTML templates)
+- GitHub release notes
+- Documentation
+
 ### Architecture
 
 Instead of using Traefik's Yaegi interpreter to load plugins at runtime, we:
 
-1. **Clone Traefik source** (v3.5.3)
-2. **Add plugin dependencies** to `go.mod` using their published versions
+1. **Clone Traefik source** (version from `versions.json`)
+2. **Add plugin dependencies** to `go.mod` using versions from `versions.json`
 3. **Patch the plugin builder** with a minimal 15-line patch that checks for embedded plugins first
 4. **Build WebUI** using npm (embedded via `go:embed` into the binary)
 5. **Compile Traefik** with plugins natively compiled into the binary
