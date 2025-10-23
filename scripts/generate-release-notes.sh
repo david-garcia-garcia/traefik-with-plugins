@@ -1,9 +1,10 @@
 #!/bin/bash
-# Generate simple release notes with versions only
+# Generate release notes with versions, repositories and Docker Hub link
 
 set -e
 
 VERSIONS_FILE="${1:-.env}"
+DOCKER_TAG="${2}"
 
 if [ ! -f "$VERSIONS_FILE" ]; then
     echo "Error: $VERSIONS_FILE not found"
@@ -13,21 +14,41 @@ fi
 # Source the env file
 source "$VERSIONS_FILE"
 
-# Generate simple release notes
+# Generate release notes
 cat << EOF
-## Versions
+## Docker Image
 
-**Traefik**: ${TRAEFIK_VERSION}
+📦 **Docker Hub**: https://hub.docker.com/repository/docker/davidbcn86/traefik-with-plugins/tags${DOCKER_TAG:+/$DOCKER_TAG}
+
+## Components
+
+### Traefik Core
+- **Version**: ${TRAEFIK_VERSION}
+- **Repository**: https://${TRAEFIK_REPO}
 
 ### Embedded Plugins
 
-- **ModSecurity**: ${PLUGIN_MODSECURITY_VERSION}
-- **RealIP**: ${PLUGIN_REALIP_VERSION}
-- **Geoblock**: ${PLUGIN_GEOBLOCK_VERSION}
-- **CrowdSec**: ${PLUGIN_CROWDSEC_VERSION}
-- **Sablier**: ${PLUGIN_SABLIER_VERSION}
+- **ModSecurity**
+  - Version: ${PLUGIN_MODSECURITY_VERSION}
+  - Repository: https://${PLUGIN_MODSECURITY_REPO}
+
+- **RealIP**
+  - Version: ${PLUGIN_REALIP_VERSION}
+  - Repository: https://${PLUGIN_REALIP_REPO}
+
+- **Geoblock**
+  - Version: ${PLUGIN_GEOBLOCK_VERSION}
+  - Repository: https://${PLUGIN_GEOBLOCK_REPO}
+
+- **CrowdSec Bouncer**
+  - Version: ${PLUGIN_CROWDSEC_VERSION}
+  - Repository: https://${PLUGIN_CROWDSEC_REPO}
+
+- **Sablier**
+  - Version: ${PLUGIN_SABLIER_VERSION}
+  - Repository: https://${PLUGIN_SABLIER_REPO}
 
 ---
 
-All plugins are natively compiled into the Traefik binary for maximum performance.
+All plugins are natively compiled into the Traefik binary for maximum performance and compatibility.
 EOF
