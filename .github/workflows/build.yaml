@@ -17,42 +17,11 @@ jobs:
   integration:
     name: Integration Tests
     runs-on: ubuntu-latest
-    outputs:
-      image-digest: ${{ steps.build.outputs.digest }}
-      image-tag: ${{ steps.build.outputs.imageid }}
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
     - name: Setup Docker Buildx
       uses: docker/setup-buildx-action@v3
-    - name: Load version variables
-      run: |
-        set -a
-        source .env
-        set +a
-        echo "TRAEFIK_VERSION=${TRAEFIK_VERSION}" >> $GITHUB_ENV
-        echo "PLUGIN_MODSECURITY_VERSION=${PLUGIN_MODSECURITY_VERSION}" >> $GITHUB_ENV
-        echo "PLUGIN_REALIP_VERSION=${PLUGIN_REALIP_VERSION}" >> $GITHUB_ENV
-        echo "PLUGIN_GEOBLOCK_VERSION=${PLUGIN_GEOBLOCK_VERSION}" >> $GITHUB_ENV
-        echo "PLUGIN_CROWDSEC_VERSION=${PLUGIN_CROWDSEC_VERSION}" >> $GITHUB_ENV
-        echo "PLUGIN_SABLIER_VERSION=${PLUGIN_SABLIER_VERSION}" >> $GITHUB_ENV
-    - name: Build Docker image for testing
-      id: build
-      uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
-      with:
-        context: ./traefik
-        file: ./traefik/dockerfile
-        load: true
-        tags: traefik-with-plugins:test
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        build-args: |
-          TRAEFIK_VERSION=${{ env.TRAEFIK_VERSION }}
-          PLUGIN_MODSECURITY_VERSION=${{ env.PLUGIN_MODSECURITY_VERSION }}
-          PLUGIN_REALIP_VERSION=${{ env.PLUGIN_REALIP_VERSION }}
-          PLUGIN_GEOBLOCK_VERSION=${{ env.PLUGIN_GEOBLOCK_VERSION }}
-          PLUGIN_CROWDSEC_VERSION=${{ env.PLUGIN_CROWDSEC_VERSION }}
-          PLUGIN_SABLIER_VERSION=${{ env.PLUGIN_SABLIER_VERSION }}
     - name: Install PowerShell and Pester
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -164,15 +133,41 @@ jobs:
       
       - name: Load version variables
         run: |
+          echo "Current working directory:"
+          pwd
+          echo "Contents of current directory:"
+          ls -la
+          echo "Looking for .env file..."
+          if [ -f .env ]; then
+            echo ".env file found"
+            echo "Loading .env file..."
+            cat .env
+          else
+            echo ".env file NOT found in current directory"
+            echo "Searching for .env file in filesystem:"
+            find . -name ".env" -type f 2>/dev/null || echo "No .env file found"
+          fi
+          echo "Sourcing .env file..."
           set -a
           source .env
           set +a
+          echo "Loaded variables:"
+          echo "TRAEFIK_REPO=${TRAEFIK_REPO}"
+          echo "TRAEFIK_VERSION=${TRAEFIK_VERSION}"
+          echo "Setting GitHub environment variables..."
+          echo "TRAEFIK_REPO=${TRAEFIK_REPO}" >> $GITHUB_ENV
           echo "TRAEFIK_VERSION=${TRAEFIK_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_MODSECURITY_REPO=${PLUGIN_MODSECURITY_REPO}" >> $GITHUB_ENV
           echo "PLUGIN_MODSECURITY_VERSION=${PLUGIN_MODSECURITY_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_REALIP_REPO=${PLUGIN_REALIP_REPO}" >> $GITHUB_ENV
           echo "PLUGIN_REALIP_VERSION=${PLUGIN_REALIP_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_GEOBLOCK_REPO=${PLUGIN_GEOBLOCK_REPO}" >> $GITHUB_ENV
           echo "PLUGIN_GEOBLOCK_VERSION=${PLUGIN_GEOBLOCK_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_CROWDSEC_REPO=${PLUGIN_CROWDSEC_REPO}" >> $GITHUB_ENV
           echo "PLUGIN_CROWDSEC_VERSION=${PLUGIN_CROWDSEC_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_SABLIER_REPO=${PLUGIN_SABLIER_REPO}" >> $GITHUB_ENV
           echo "PLUGIN_SABLIER_VERSION=${PLUGIN_SABLIER_VERSION}" >> $GITHUB_ENV
+          echo "Done setting environment variables."
       
       - name: Build and push Docker image
         id: push
@@ -184,11 +179,17 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
+            TRAEFIK_REPO=${{ env.TRAEFIK_REPO }}
             TRAEFIK_VERSION=${{ env.TRAEFIK_VERSION }}
+            PLUGIN_MODSECURITY_REPO=${{ env.PLUGIN_MODSECURITY_REPO }}
             PLUGIN_MODSECURITY_VERSION=${{ env.PLUGIN_MODSECURITY_VERSION }}
+            PLUGIN_REALIP_REPO=${{ env.PLUGIN_REALIP_REPO }}
             PLUGIN_REALIP_VERSION=${{ env.PLUGIN_REALIP_VERSION }}
+            PLUGIN_GEOBLOCK_REPO=${{ env.PLUGIN_GEOBLOCK_REPO }}
             PLUGIN_GEOBLOCK_VERSION=${{ env.PLUGIN_GEOBLOCK_VERSION }}
+            PLUGIN_CROWDSEC_REPO=${{ env.PLUGIN_CROWDSEC_REPO }}
             PLUGIN_CROWDSEC_VERSION=${{ env.PLUGIN_CROWDSEC_VERSION }}
+            PLUGIN_SABLIER_REPO=${{ env.PLUGIN_SABLIER_REPO }}
             PLUGIN_SABLIER_VERSION=${{ env.PLUGIN_SABLIER_VERSION }}
 
       - name: Generate artifact attestation
