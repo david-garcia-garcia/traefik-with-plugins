@@ -133,28 +133,9 @@ jobs:
       
       - name: Load version variables
         run: |
-          echo "Current working directory:"
-          pwd
-          echo "Contents of current directory:"
-          ls -la
-          echo "Looking for .env file..."
-          if [ -f .env ]; then
-            echo ".env file found"
-            echo "Loading .env file..."
-            cat .env
-          else
-            echo ".env file NOT found in current directory"
-            echo "Searching for .env file in filesystem:"
-            find . -name ".env" -type f 2>/dev/null || echo "No .env file found"
-          fi
-          echo "Sourcing .env file..."
           set -a
           source .env
           set +a
-          echo "Loaded variables:"
-          echo "TRAEFIK_REPO=${TRAEFIK_REPO}"
-          echo "TRAEFIK_VERSION=${TRAEFIK_VERSION}"
-          echo "Setting GitHub environment variables..."
           echo "TRAEFIK_REPO=${TRAEFIK_REPO}" >> $GITHUB_ENV
           echo "TRAEFIK_VERSION=${TRAEFIK_VERSION}" >> $GITHUB_ENV
           echo "PLUGIN_MODSECURITY_REPO=${PLUGIN_MODSECURITY_REPO}" >> $GITHUB_ENV
@@ -167,7 +148,6 @@ jobs:
           echo "PLUGIN_CROWDSEC_VERSION=${PLUGIN_CROWDSEC_VERSION}" >> $GITHUB_ENV
           echo "PLUGIN_SABLIER_REPO=${PLUGIN_SABLIER_REPO}" >> $GITHUB_ENV
           echo "PLUGIN_SABLIER_VERSION=${PLUGIN_SABLIER_VERSION}" >> $GITHUB_ENV
-          echo "Done setting environment variables."
       
       - name: Build and push Docker image
         id: push
@@ -215,7 +195,12 @@ jobs:
         run: |
           source .env
           chmod +x scripts/generate-release-notes.sh
-          RELEASE_NOTES=$(./scripts/generate-release-notes.sh .env)
+          
+          # Extract Docker tag from GitHub ref (e.g., refs/tags/v1.0.0 -> v1.0.0)
+          DOCKER_TAG=${GITHUB_REF#refs/tags/}
+          echo "Docker tag: $DOCKER_TAG"
+          
+          RELEASE_NOTES=$(./scripts/generate-release-notes.sh .env "$DOCKER_TAG")
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
