@@ -1,0 +1,21 @@
+# Cypress
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+

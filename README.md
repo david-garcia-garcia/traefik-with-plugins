@@ -1,85 +1,82 @@
-# Traefik Image (with plugins)
+# Traefik with Embedded Plugins
 
-[Traefik](https://traefik.io/) image with embeded plugins. 
+[Traefik](https://traefik.io/) image with **natively compiled** plugins for maximum performance.
 
-You need to add plugins to your traefik images because:
+## Why Embedded Plugins?
 
-* You don't want your Traefik pods not to start when Traefik's plugin repository is down
-* Traefik pods start much faster if they don't have to pull the plugins every time they start
+**Performance**: Plugins are compiled directly into the Traefik binary instead of being interpreted via Yaegi at runtime, resulting in:
+- 🚀 **Faster startup** - No plugin downloading or compilation
+- ⚡ **Better performance** - Native code execution (no interpreter overhead)
+- 🔒 **More reliable** - No dependency on external plugin repositories
+- 📦 **Smaller footprint** - Single binary with everything included
 
-See:
+## Quick Start
 
-* [Embedding plugins beforehand to avoid on-startup compiling - Traefik / Traefik v2 - Traefik Labs Community Forum](https://community.traefik.io/t/embedding-plugins-beforehand-to-avoid-on-startup-compiling/16816/4)
-* [traefik/plugindemo: This repository includes an example plugin, for you to use as a reference for developing your own plugins](https://github.com/traefik/plugindemo#local-mode)
-
-To build the image locally use:
+Build and run locally:
 
 ```powershell
-.\build -StartContainers
+docker-compose up -d --build
 ```
 
-The project includes a sample traefik.yml
+Or use pre-built images from Docker Hub:
 
-Built images are available at:
-
-[davidbcn86/traefik-with-plugins general | Docker Hub](https://hub.docker.com/repository/docker/davidbcn86/traefik-with-plugins/general)
-
-# Current container state
-
-## Traefik Version
-- **Traefik**: 3.1.7
+[davidbcn86/traefik-with-plugins](https://hub.docker.com/repository/docker/davidbcn86/traefik-with-plugins/general)
 
 ## Embedded Plugins
 
-| Plugin | Repository | Version/Branch |
-|--------|------------|----------------|
-| **ModSecurity** | [david-garcia-garcia/traefik-modsecurity](https://github.com/david-garcia-garcia/traefik-modsecurity) | `v1.7.0` |
-| **Geoblock** | [david-garcia-garcia/traefik-geoblock](https://github.com/david-garcia-garcia/traefik-geoblock) | `v1.1.0-beta.2` |
-| **Sablier** | [sablierapp/sablier](https://github.com/sablierapp/sablier) | `v1.8.1` |
-| **CrowdSec Bouncer** | [maxlerebourg/crowdsec-bouncer-traefik-plugin](https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin) | `reportmetrics.2` |
+| Plugin | Default Key | Repository |
+|--------|-------------|------------|
+| **ModSecurity** | `modsecurity` | [david-garcia-garcia/traefik-modsecurity](https://github.com/david-garcia-garcia/traefik-modsecurity) |
+| **RealIP** | `realip` | [david-garcia-garcia/traefik-realip](https://github.com/david-garcia-garcia/traefik-realip) |
+| **Geoblock** | `geoblock` | [david-garcia-garcia/traefik-geoblock](https://github.com/david-garcia-garcia/traefik-geoblock) |
+| **CrowdSec** | `crowdsec` | [maxlerebourg/crowdsec-bouncer-traefik-plugin](https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin) |
+| **Sablier** | `sablier` | [sablierapp/sablier](https://github.com/sablierapp/sablier) |
 
 ## Configuration
 
-The plugins are configured in `traefik.yml` as:
+### Basic Usage
+
+Embedded plugins are used just like regular plugins in your Docker labels or static configuration:
 
 ```yaml
-experimental:
-  localPlugins:
-    modsecurity:
-      moduleName: "github.com/david-garcia-garcia/traefik-modsecurity"
-    geoblock:
-      moduleName: "github.com/david-garcia-garcia/traefik-geoblock"
-    sablier:
-      moduleName: "github.com/sablierapp/sablier"
-    bouncer:
-      moduleName: "github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
+# Docker Compose labels example
+labels:
+  - "traefik.http.middlewares.my-waf.plugin.modsecurity.modSecurityUrl=http://waf:8080"
+  - "traefik.http.middlewares.my-crowdsec.plugin.crowdsec.enabled=true"
+  - "traefik.http.middlewares.my-geoblock.plugin.geoblock.defaultAllow=true"
+  - "traefik.http.middlewares.my-realip.plugin.realip.enabled=true"
 ```
 
-## Supporting Services
+### Custom Plugin Keys (Environment Variable Remapping)
 
-The `compose.yaml` file includes additional services required for proper plugin operation:
+For backward compatibility or custom naming preferences, you can remap plugin keys using environment variables:
 
-| Service | Purpose | Plugin |
-|---------|---------|--------|
-| **waf** | OWASP ModSecurity CRS WAF service | ModSecurity |
-| **crowdsec** | CrowdSec security engine | CrowdSec Bouncer |
-| **dummy** | Backend service for WAF | ModSecurity |
-
-## Test Routes
-
-The integration tests verify the following routes:
-
-| Route | Service | Middleware | Description |
-|-------|---------|------------|-------------|
-| `/plain` | whoami-plain | None | Basic service without middleware |
-| `/modsecurity` | whoami-modsecurity | ModSecurity | Protected by WAF |
-| `/geoblock` | whoami-geoblock | Geoblock | IP-based geo-blocking |
-| `/crowdsec` | whoami-crowdsec | CrowdSec Bouncer | CrowdSec protection |
-
-## Testing
-
-The project includes Pester integration tests that can be run with:
-
-```powershell
-.\Test-Integration.ps1
+```yaml
+# In your docker-compose.yaml or Kubernetes deployment
+environment:
+  # Use "bouncer" instead of "crowdsec" in your configurations
+  - TRAEFIK_EMBEDDED_CROWDSEC_KEY=bouncer
+  
+  # Use "waf" instead of "modsecurity"
+  - TRAEFIK_EMBEDDED_MODSECURITY_KEY=waf
+  
+  # Any plugin can be remapped
+  - TRAEFIK_EMBEDDED_REALIP_KEY=real-ip
+  - TRAEFIK_EMBEDDED_GEOBLOCK_KEY=geo
+  - TRAEFIK_EMBEDDED_SABLIER_KEY=sablier-custom
 ```
+
+**Format**: `TRAEFIK_EMBEDDED_{PLUGINNAME}_KEY={custom-key}`
+
+This allows you to migrate from existing Yaegi-based configurations without changing your middleware definitions.
+
+### Example with Remapping
+
+```yaml
+# With TRAEFIK_EMBEDDED_CROWDSEC_KEY=bouncer set
+labels:
+  # You can now use "bouncer" instead of "crowdsec"
+  - "traefik.http.middlewares.my-bouncer.plugin.bouncer.enabled=true"
+  - "traefik.http.middlewares.my-bouncer.plugin.bouncer.crowdsecLapiKey=xxx"
+```
+

@@ -1,28 +1,13 @@
 services:
   traefik:
-    image: traefik-with-plugins:latest
+    image: traefik-embedded:latest
     restart: unless-stopped
-    env_file:
-      - .env
     build:
       context: ./traefik
-      dockerfile: Dockerfile
-      args:
-        - TRAEFIK_REPO=${TRAEFIK_REPO}
-        - TRAEFIK_VERSION=${TRAEFIK_VERSION}
-        - PLUGIN_MODSECURITY_REPO=${PLUGIN_MODSECURITY_REPO}
-        - PLUGIN_MODSECURITY_VERSION=${PLUGIN_MODSECURITY_VERSION}
-        - PLUGIN_REALIP_REPO=${PLUGIN_REALIP_REPO}
-        - PLUGIN_REALIP_VERSION=${PLUGIN_REALIP_VERSION}
-        - PLUGIN_GEOBLOCK_REPO=${PLUGIN_GEOBLOCK_REPO}
-        - PLUGIN_GEOBLOCK_VERSION=${PLUGIN_GEOBLOCK_VERSION}
-        - PLUGIN_CROWDSEC_REPO=${PLUGIN_CROWDSEC_REPO}
-        - PLUGIN_CROWDSEC_VERSION=${PLUGIN_CROWDSEC_VERSION}
-        - PLUGIN_SABLIER_REPO=${PLUGIN_SABLIER_REPO}
-        - PLUGIN_SABLIER_VERSION=${PLUGIN_SABLIER_VERSION}
+      dockerfile: dockerfile-embedded
     volumes:
-      # Mount traefik config to the container's /etc/traefik/traefik.yml
-      - ./traefik.yml:/etc/traefik/traefik.yml
+      # Mount the embedded traefik config to the container's /etc/traefik/traefik.yml
+      - ./traefik-embedded.yml:/etc/traefik/traefik.yml
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "logs:/var/log/traefik"
       - "geoblock-data:/data/autoupdate"
@@ -32,7 +17,7 @@ services:
     depends_on:
       - waf
     environment:
-      - IMAGE_NAME=traefik-with-plugins:latest
+      - IMAGE_NAME=traefik-embedded:latest
       # Plugin key remapping - allows using legacy names in configurations
       # Uncomment to use "bouncer" instead of "crowdsec" in plugin configurations
       # - TRAEFIK_EMBEDDED_CROWDSEC_KEY=bouncer

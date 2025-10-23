@@ -1,0 +1,14 @@
+{
+  "name": "traefik-with-plugins-tests",
+  "version": "1.0.0",
+  "description": "Integration and E2E tests for Traefik with embedded plugins",
+  "scripts": {
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "test:dashboard": "cypress run --spec 'cypress/e2e/dashboard.cy.js'"
+  },
+  "devDependencies": {
+    "cypress": "^13.6.0"
+  }
+}
+
