@@ -18,7 +18,7 @@ ARG PLUGIN_SABLIER_REPO
 ARG PLUGIN_SABLIER_VERSION
 
 # Stage 1: Build stage with Go and Git
-FROM golang:1.24.3-alpine3.21 AS builder
+FROM golang:1.25-alpine3.22 AS builder
 
 # Re-declare ARGs after FROM to make them available in this stage
 ARG TRAEFIK_REPO
@@ -34,9 +34,15 @@ ARG PLUGIN_CROWDSEC_VERSION
 ARG PLUGIN_SABLIER_REPO
 ARG PLUGIN_SABLIER_VERSION
 
-# Install required tools
+# Install required tools (including Node.js and npm)
 RUN set -eux; \
-    apk add --no-cache git make bash curl nodejs npm patch dos2unix docker-cli yarn
+    apk add --no-cache git make bash curl nodejs npm patch dos2unix docker-cli
+
+# Install Corepack globally so we can use the Yarn version
+# defined in webui/package.json's "packageManager" field.
+RUN set -eux; \
+    npm install -g corepack && \
+    corepack enable
 
 # Set working directory
 WORKDIR /build
@@ -74,10 +80,11 @@ RUN set -eux; \
     go mod tidy
 
 # Build WebUI directly using Node.js (MUST be before binary build for go:embed)
+# Corepack will ensure the correct Yarn (4.x) is used based on package.json.
 WORKDIR /build/traefik/webui
 RUN set -eux; \
-    npm install && \
-    npm run build
+    yarn install && \
+    yarn build
 
 # Clone ALL plugins to plugins-local - extract org names from repo URLs
 RUN set -eux; \
