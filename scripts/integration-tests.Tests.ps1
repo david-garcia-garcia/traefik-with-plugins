@@ -4,6 +4,10 @@
 # These tests verify that the Traefik setup with plugins is working correctly
 
 BeforeAll {
+    # Source test helper functions
+    $scriptPath = Split-Path -Parent $PSCommandPath
+    . "$scriptPath/TestHelpers.ps1"
+    
     # Test configuration
     $script:BaseUrl = "http://localhost:8000"
     $script:TraefikApiUrl = "http://localhost:8080"
@@ -129,6 +133,42 @@ Describe "Service Endpoint Tests" {
         It "Should return valid response with ModSecurity middleware" {
             $response = Invoke-TestRequest -Uri "$script:BaseUrl/modsecurity"
             $response.Content | Should -Match "Hostname:"
+        }
+
+        It "Should handle request body smaller than pool threshold (512 bytes)" {
+            # maxBodySizeBytesForPool = 1024
+            # Test with 512 bytes - should use pool
+            $bodySize = 512
+            $body = New-RequestBodyOfSizeBytes -TargetSizeBytes $bodySize -Prefix ""
+            $response = Invoke-SafeWebRequest -Uri "$script:BaseUrl/modsecurity" -Method POST -Body $body -TimeoutSec 30
+            $response.StatusCode | Should -Be 200
+        }
+
+        It "Should handle request body exactly at pool threshold (1024 bytes)" {
+            # maxBodySizeBytesForPool = 1024
+            # Test with exactly 1024 bytes - should use pool
+            $bodySize = 1024
+            $body = New-RequestBodyOfSizeBytes -TargetSizeBytes $bodySize -Prefix ""
+            $response = Invoke-SafeWebRequest -Uri "$script:BaseUrl/modsecurity" -Method POST -Body $body -TimeoutSec 30
+            $response.StatusCode | Should -Be 200
+        }
+
+        It "Should handle request body larger than pool but smaller than max (2048 bytes)" {
+            # maxBodySizeBytesForPool = 1024, maxBodySizeBytes = 5120
+            # Test with 2048 bytes - should use ad-hoc allocation but still pass
+            $bodySize = 2048
+            $body = New-RequestBodyOfSizeBytes -TargetSizeBytes $bodySize -Prefix ""
+            $response = Invoke-SafeWebRequest -Uri "$script:BaseUrl/modsecurity" -Method POST -Body $body -TimeoutSec 30
+            $response.StatusCode | Should -Be 200
+        }
+
+        It "Should reject request body larger than max size with 413 (6000 bytes)" {
+            # maxBodySizeBytes = 5120
+            # Test with 6000 bytes - should be rejected with 413
+            $bodySize = 6000
+            $body = New-RequestBodyOfSizeBytes -TargetSizeBytes $bodySize -Prefix ""
+            $response = Invoke-SafeWebRequest -Uri "$script:BaseUrl/modsecurity" -Method POST -Body $body -TimeoutSec 30
+            $response.StatusCode | Should -Be 413
         }
     }
 

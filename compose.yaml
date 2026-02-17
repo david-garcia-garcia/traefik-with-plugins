@@ -61,7 +61,8 @@ services:
       - "traefik.http.routers.modsecurity-router.middlewares=waf@docker"
       - "traefik.http.services.modsecurity-service.loadbalancer.server.port=80"
       - "traefik.http.middlewares.waf.plugin.modsecurity.modSecurityUrl=http://waf:8080"
-      - "traefik.http.middlewares.waf.plugin.modsecurity.jailEnabled=false"
+      - "traefik.http.middlewares.waf.plugin.modsecurity.maxBodySizeBytesForPool=1024"
+      - "traefik.http.middlewares.waf.plugin.modsecurity.maxBodySizeBytes=5120"
 
   # Service 3: Whoami with Geoblock middleware (simplified config)
   whoami-geoblock:
