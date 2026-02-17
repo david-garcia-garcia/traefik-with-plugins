@@ -1,0 +1,47 @@
+diff --git a/webui/src/contexts/version.tsx b/webui/src/contexts/version.tsx
+index 742d38c28..bbd9d2333 100644
+--- a/webui/src/contexts/version.tsx
++++ b/webui/src/contexts/version.tsx
+@@ -28,7 +28,7 @@ export const VersionProvider = ({ children }: VersionProviderProps) => {
+           throw new Error(`Network error: ${response.status}`)
+         }
+         const data: API.Version = await response.json()
+-        setShowHubButton(!data.disableDashboardAd)
++        setShowHubButton(false)
+         setVersion(data.Version)
+       } catch (err) {
+         console.error(err)
+diff --git a/webui/src/pages/hub-demo/use-hub-demo.tsx b/webui/src/pages/hub-demo/use-hub-demo.tsx
+index b23109c17..ed0fb2e9b 100644
+--- a/webui/src/pages/hub-demo/use-hub-demo.tsx
++++ b/webui/src/pages/hub-demo/use-hub-demo.tsx
+@@ -28,7 +28,7 @@ const useHubDemoRoutesManifest = (): HubDemo.Manifest | null => {
+           PUBLIC_KEY,
+         )
+ 
+-        if (!verified || !scriptContent) {
++        if (true) {
+           setManifest(null)
+           return
+         }
+diff --git a/webui/src/layout/Navigation.tsx b/webui/src/layout/Navigation.tsx
+index 0f57405ab..1c595f2aa 100644
+--- a/webui/src/layout/Navigation.tsx
++++ b/webui/src/layout/Navigation.tsx
+@@ -40,7 +40,6 @@ import { VersionContext } from 'contexts/version'
+ import useHubUpgradeButton from 'hooks/use-hub-upgrade-button'
+ import useTotals from 'hooks/use-overview-totals'
+ import { useIsDarkMode } from 'hooks/use-theme'
+-import ApimDemoNavMenu from 'pages/hub-demo/HubDemoNav'
+ import { Route, ROUTES } from 'routes'
+ 
+ export const LAPTOP_BP = 1025
+@@ -287,8 +286,6 @@ export const SideNav = ({
+             {!isSmallScreen || isExpanded ? 'Plugins' : ''}
+           </NavigationLink>
+         </Flex>
+-
+-        <ApimDemoNavMenu isResponsive={isResponsive} isSmallScreen={isSmallScreen} isExpanded={isExpanded} />
+       </Container>
+     </NavigationDrawer>
+   )
