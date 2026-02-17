@@ -79,6 +79,12 @@ RUN set -eux; \
     go mod download && \
     go mod tidy
 
+# Apply hub removal patch (removes "Upgrade to Traefik Hub" button and demo)
+# Use -p1 for git-formatted diff (strips a/ b/ prefix); dos2unix for Windows CRLF
+RUN set -eux; \
+    dos2unix pkg/middlewares/plugins/hub-removal.patch && \
+    patch -p1 < pkg/middlewares/plugins/hub-removal.patch
+
 # Build WebUI directly using Node.js (MUST be before binary build for go:embed)
 # Corepack will ensure the correct Yarn (4.x) is used based on package.json.
 WORKDIR /build/traefik/webui
