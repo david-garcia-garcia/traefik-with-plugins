@@ -1,14 +1,39 @@
 # Traefik with Embedded Plugins
 
-[Traefik](https://traefik.io/) image with **natively compiled** plugins for maximum performance.
+[Traefik](https://traefik.io/) image with plugins compiled into the binary (no Yaegi at runtime). 
+
+> **⚠️ You should not run middlewares as Yaegi plugins in production.**
+>
+> Traefik’s default plugin system runs plugins via [Yaegi](https://github.com/traefik/yaegi) (a Go interpreter) at runtime. Middlewares run on every request, so they sit on the hot path. Using an interpreter for that workload has concrete drawbacks related to memory management, CPU usage and observability (see [feat: improve pprof experience by adding wrappers to interpreted functions by david-garcia-garcia · Pull Request #1712 · traefik/yaegi](https://github.com/traefik/yaegi/pull/1712))
+>
+> For production deployments where middlewares handle substantial traffic, use a Traefik build that **compiles those middlewares into the binary** instead of loading them as Yaegi plugins such as in [david-garcia-garcia/traefik-with-plugins: Traefik container with preloaded plugins in it](https://github.com/david-garcia-garcia/traefik-with-plugins) 
+> 
+> **For more details and discussion, read [Traefik issue #12213](https://github.com/traefik/traefik/issues/12213) in the Traefik issue queue.**
+
+## Why This Project Exists and what it does
+
+This repository builds Traefik with a fixed set of middlewares compiled directly into the binary (no Yaegi for those plugins).  The built Traefik instance still supports Yeagi plugins if needed.
+
+To accomplish this the upstream source code is patched consistently, see details of patches in:
+
+[traefik-with-plugins/traefik/embedded-plugins at main · david-garcia-garcia/traefik-with-plugins](https://github.com/david-garcia-garcia/traefik-with-plugins/tree/main/traefik/embedded-plugins)
+
+## Tests
+
+To ensure stability this project includes end to end testing of the resulting Traefik image that makes sure the middlewares and traefik itself are working:
+
+* Cypress test coverage [david-garcia-garcia/traefik-with-plugins: Traefik container with preloaded plugins in it](https://github.com/david-garcia-garcia/traefik-with-plugins)
+* e2e test: [traefik-with-plugins/scripts at main · david-garcia-garcia/traefik-with-plugins](https://github.com/david-garcia-garcia/traefik-with-plugins/tree/main/scripts)
 
 ## Why Embedded Plugins?
 
-**Performance**: Plugins are compiled directly into the Traefik binary instead of being interpreted via Yaegi at runtime, resulting in:
-- 🚀 **Faster startup** - No plugin downloading or compilation
-- ⚡ **Better performance** - Native code execution (no interpreter overhead)
-- 🔒 **More reliable** - No dependency on external plugin repositories
-- 📦 **Smaller footprint** - Single binary with everything included
+Plugins are compiled into the Traefik binary instead of being loaded and interpreted by Yaegi:
+
+- No plugin download or Yaegi compilation at startup.
+- Native execution: no interpreter overhead on each request.
+- No dependency on external plugin stores at runtime.
+- Single binary; no separate plugin artifacts.
+- Improved resource usage and observability
 
 ## Quick Start
 
@@ -31,6 +56,8 @@ Or use pre-built images from Docker Hub:
 | **Geoblock** | `geoblock` | [david-garcia-garcia/traefik-geoblock](https://github.com/david-garcia-garcia/traefik-geoblock) |
 | **CrowdSec** | `crowdsec` | [maxlerebourg/crowdsec-bouncer-traefik-plugin](https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin) |
 | **Sablier** | `sablier` | [sablierapp/sablier](https://github.com/sablierapp/sablier) |
+
+See the [releases](https://github.com/david-garcia-garcia/traefik-with-plugins/releases) section for details on what versions of the plugins and traefik are used.
 
 ## Configuration
 
@@ -79,4 +106,3 @@ labels:
   - "traefik.http.middlewares.my-bouncer.plugin.bouncer.enabled=true"
   - "traefik.http.middlewares.my-bouncer.plugin.bouncer.crowdsecLapiKey=xxx"
 ```
-
