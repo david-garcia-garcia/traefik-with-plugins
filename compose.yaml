@@ -78,9 +78,16 @@ services:
       - "traefik.http.middlewares.geoblock.plugin.geoblock.enabled=true"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.defaultAllow=true"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.allowPrivate=true"
-      - "traefik.http.middlewares.geoblock.plugin.geoblock.databaseAutoUpdate=true"
-      - "traefik.http.middlewares.geoblock.plugin.geoblock.databaseAutoUpdateDir=/data/autoupdate"
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.ip2location_databaseAutoUpdate=true"
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.ip2location_databaseAutoUpdateDir=/data/autoupdate"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.logLevel=debug"
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.requestHeaderEnrich.X-Geo-Country=country"
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.requestHeaderEnrich.X-Geo-Region=region"
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.requestHeaderEnrich.X-Geo-City=city"
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.requestHeaderEnrich.X-Geo-Asn=asn"
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.requestHeaderEnrich.X-Geo-Isp=isp"
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.requestHeaderEnrich.X-Geo-Domain=domain"
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.logStatusDetailHeader=X-Geoblock-Decision"
   # Service 4: Whoami with CrowdSec middleware
   whoami-crowdsec:
     image: traefik/whoami
