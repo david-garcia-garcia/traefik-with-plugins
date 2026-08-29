@@ -34,11 +34,6 @@ ARG PLUGIN_CROWDSEC_VERSION
 ARG PLUGIN_SABLIER_REPO
 ARG PLUGIN_SABLIER_VERSION
 
-# Fetch modules from VCS directly; skip sumdb so brand-new plugin tags
-# are usable before proxy.golang.org / sum.golang.org have indexed them.
-ENV GOPROXY=direct
-ENV GOSUMDB=off
-
 # Install required tools (including Node.js and npm)
 RUN set -eux; \
     apk add --no-cache git make bash curl nodejs npm patch dos2unix docker-cli
