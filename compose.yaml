@@ -78,8 +78,9 @@ services:
       - "traefik.http.middlewares.geoblock.plugin.geoblock.enabled=true"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.defaultAllow=true"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.allowPrivate=true"
-      - "traefik.http.middlewares.geoblock.plugin.geoblock.ip2location_databaseAutoUpdate=true"
-      - "traefik.http.middlewares.geoblock.plugin.geoblock.ip2location_databaseAutoUpdateDir=/data/autoupdate"
+      # Empty ip2location_source_geo binds default_ip2location (free LITE ZIP).
+      # Auto-update runs when the bound source has a URL and this dir is set.
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.databaseAutoUpdateDir=/data/autoupdate"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.logLevel=debug"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.requestHeaderEnrich.X-Geo-Country=country"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.requestHeaderEnrich.X-Geo-Region=region"
