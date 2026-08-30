@@ -70,6 +70,7 @@ Embedded plugins are used just like regular plugins in your Docker labels or sta
 labels:
   - "traefik.http.middlewares.my-waf.plugin.modsecurity.modSecurityUrl=http://waf:8080"
   - "traefik.http.middlewares.my-crowdsec.plugin.crowdsec.enabled=true"
+  - "traefik.http.middlewares.my-geoblock.plugin.geoblock.mode=enrichandblock"
   - "traefik.http.middlewares.my-geoblock.plugin.geoblock.defaultAllow=true"
   - "traefik.http.middlewares.my-realip.plugin.realip.enabled=true"
 ```

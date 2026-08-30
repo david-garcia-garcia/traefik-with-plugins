@@ -64,7 +64,7 @@ services:
       - "traefik.http.middlewares.waf.plugin.modsecurity.maxBodySizeBytesForPool=1024"
       - "traefik.http.middlewares.waf.plugin.modsecurity.maxBodySizeBytes=5120"
 
-  # Service 3: Whoami with Geoblock middleware (simplified config)
+  # Service 3: Whoami with Geoblock middleware
   whoami-geoblock:
     image: traefik/whoami
     container_name: "whoami-geoblock"
@@ -75,11 +75,14 @@ services:
       - "traefik.http.routers.geoblock-router.entrypoints=web"
       - "traefik.http.routers.geoblock-router.middlewares=geoblock@docker"
       - "traefik.http.services.geoblock-service.loadbalancer.server.port=80"
-      - "traefik.http.middlewares.geoblock.plugin.geoblock.enabled=true"
+      # mode: disabled | enrich | block | enrichandblock (empty = disabled)
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.mode=enrichandblock"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.defaultAllow=true"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.allowPrivate=true"
-      # Empty ip2location_source_geo binds default_ip2location (free LITE ZIP).
-      # Auto-update runs when the bound source has a URL and this dir is set.
+      # Must match requestHeaderEnrich country mapping (default is X-IPCountry).
+      - "traefik.http.middlewares.geoblock.plugin.geoblock.countryHeader=X-Geo-Country"
+      # Reserved default_ip2location (free LITE ZIP) is inserted when missing.
+      # Auto-update runs when that source has a URL and this dir is set.
       - "traefik.http.middlewares.geoblock.plugin.geoblock.databaseAutoUpdateDir=/data/autoupdate"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.logLevel=debug"
       - "traefik.http.middlewares.geoblock.plugin.geoblock.requestHeaderEnrich.X-Geo-Country=country"
