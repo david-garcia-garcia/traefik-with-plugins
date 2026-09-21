@@ -24,6 +24,26 @@ To ensure stability this project includes end to end testing of the resulting Tr
 
 * Cypress test coverage [david-garcia-garcia/traefik-with-plugins: Traefik container with preloaded plugins in it](https://github.com/david-garcia-garcia/traefik-with-plugins)
 * e2e test: [traefik-with-plugins/scripts at main · david-garcia-garcia/traefik-with-plugins](https://github.com/david-garcia-garcia/traefik-with-plugins/tree/main/scripts)
+* compiled vs Yaegi bench: see [Performance](#performance)
+
+## Performance
+
+`./Test-Benchmark.ps1` compares compiled (embedded) middlewares with the same stacks running as Yaegi plugins. It brings up the bench overlay (`compose.yaml` + `compose.bench.yaml` + `traefik.bench.yml`).
+
+```powershell
+./Test-Benchmark.ps1
+./Test-Benchmark.ps1 -Requests 300 -Concurrency 8
+```
+
+Stacks: none (`/plain`), geo, geo+crowdsec, geo+crowdsec+modsec (Apache CRS), geo+crowdsec+modsec (nginx CRS, unix-socket drain). Each stack is measured compiled and interpreted. Sequential sample below (300 requests, times in ms):
+
+| Stack | Compiled avg | p95 | rps | Yaegi avg | p95 | rps | Yaegi vs compiled |
+|---|---:|---:|---:|---:|---:|---:|---|
+| none | 0.71 | 0.91 | 1255 | — | — | — | same endpoint |
+| geo | 0.69 | 0.88 | 1298 | 0.79 | 1.06 | 1085 | 1.14× |
+| geo+crowdsec | 0.67 | 0.87 | 1334 | 0.94 | 1.18 | 982 | 1.40× |
+| geo+crowdsec+modsec (apache) | 1.40 | 1.78 | 671 | 1.94 | 2.51 | 491 | 1.39× |
+| geo+crowdsec+modsec (nginx) | 3.41 | 4.29 | 286 | 4.75 | 6.72 | 206 | 1.39× |
 
 ## Why Embedded Plugins?
 
@@ -40,8 +60,10 @@ Plugins are compiled into the Traefik binary instead of being loaded and interpr
 Build and run locally:
 
 ```powershell
-docker-compose up -d --build
+docker compose --env-file versions.conf up -d --build
 ```
+
+Traefik and plugin versions are pinned in `versions.conf` (build config, not a secrets `.env`).
 
 Or use pre-built images from Docker Hub:
 
@@ -55,6 +77,7 @@ Or use pre-built images from Docker Hub:
 | **RealIP** | `realip` | [david-garcia-garcia/traefik-realip](https://github.com/david-garcia-garcia/traefik-realip) |
 | **Geoblock** | `geoblock` | [david-garcia-garcia/traefik-geoblock](https://github.com/david-garcia-garcia/traefik-geoblock) |
 | **CrowdSec** | `crowdsec` | [maxlerebourg/crowdsec-bouncer-traefik-plugin](https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin) |
+| **CrowdSec Fork** | `crowdsecfork` | [david-garcia-garcia/crowdsec-bouncer-traefik-plugin](https://github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin) |
 | **Sablier** | `sablier` | [sablierapp/sablier](https://github.com/sablierapp/sablier) |
 
 See the [releases](https://github.com/david-garcia-garcia/traefik-with-plugins/releases) section for details on what versions of the plugins and traefik are used.
@@ -70,6 +93,7 @@ Embedded plugins are used just like regular plugins in your Docker labels or sta
 labels:
   - "traefik.http.middlewares.my-waf.plugin.modsecurity.modSecurityUrl=http://waf:8080"
   - "traefik.http.middlewares.my-crowdsec.plugin.crowdsec.enabled=true"
+  - "traefik.http.middlewares.my-crowdsecfork.plugin.crowdsecfork.enabled=true"
   - "traefik.http.middlewares.my-geoblock.plugin.geoblock.mode=enrichandblock"
   - "traefik.http.middlewares.my-geoblock.plugin.geoblock.defaultAllow=true"
   - "traefik.http.middlewares.my-realip.plugin.realip.enabled=true"
@@ -82,8 +106,11 @@ For backward compatibility or custom naming preferences, you can remap plugin ke
 ```yaml
 # In your docker-compose.yaml or Kubernetes deployment
 environment:
-  # Use "bouncer" instead of "crowdsec" in your configurations
-  - TRAEFIK_EMBEDDED_CROWDSEC_KEY=bouncer
+  # Use "cs" instead of "crowdsec" in your configurations
+  - TRAEFIK_EMBEDDED_CROWDSEC_KEY=cs
+  
+  # Use a custom key for the david-garcia-garcia CrowdSec fork
+  - TRAEFIK_EMBEDDED_CROWDSECFORK_KEY=csfork
   
   # Use "waf" instead of "modsecurity"
   - TRAEFIK_EMBEDDED_MODSECURITY_KEY=waf
@@ -101,9 +128,9 @@ This allows you to migrate from existing Yaegi-based configurations without chan
 ### Example with Remapping
 
 ```yaml
-# With TRAEFIK_EMBEDDED_CROWDSEC_KEY=bouncer set
+# With TRAEFIK_EMBEDDED_CROWDSEC_KEY=cs set
 labels:
-  # You can now use "bouncer" instead of "crowdsec"
-  - "traefik.http.middlewares.my-bouncer.plugin.bouncer.enabled=true"
-  - "traefik.http.middlewares.my-bouncer.plugin.bouncer.crowdsecLapiKey=xxx"
+  # You can now use "cs" instead of "crowdsec"
+  - "traefik.http.middlewares.my-cs.plugin.cs.enabled=true"
+  - "traefik.http.middlewares.my-cs.plugin.cs.crowdsecLapiKey=xxx"
 ```

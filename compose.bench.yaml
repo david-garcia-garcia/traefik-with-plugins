@@ -1,0 +1,143 @@
+# Overlay for compiled-vs-Yaegi benches.
+#   docker compose --env-file versions.conf -f compose.yaml -f compose.bench.yaml up -d
+# Shares traefik / waf / whoami-plain from compose.yaml. Test-Benchmark.ps1 applies this file.
+
+services:
+  traefik:
+    command:
+      - --configFile=/etc/traefik/traefik.bench.yml
+    volumes:
+      - ./traefik.bench.yml:/etc/traefik/traefik.bench.yml:ro
+
+  # Unique middleware names so other compose projects on the same Docker
+  # socket cannot collide (geoblock@docker / waf@docker do).
+  # Compiled: /bench/geo, /bench/geo-crowdsec,
+  #   /bench/geo-crowdsec-modsec (Apache), /bench/geo-crowdsec-modsec-nginx
+  whoami-bench:
+    image: traefik/whoami
+    container_name: "whoami-bench"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.bench-compiled.loadbalancer.server.port=80"
+      - "traefik.http.routers.bench-geo-router.rule=Path(`/bench/geo`)"
+      - "traefik.http.routers.bench-geo-router.entrypoints=web"
+      - "traefik.http.routers.bench-geo-router.service=bench-compiled"
+      - "traefik.http.routers.bench-geo-router.middlewares=bench-geo@docker"
+      - "traefik.http.routers.bench-geo-crowdsec-router.rule=Path(`/bench/geo-crowdsec`)"
+      - "traefik.http.routers.bench-geo-crowdsec-router.entrypoints=web"
+      - "traefik.http.routers.bench-geo-crowdsec-router.service=bench-compiled"
+      - "traefik.http.routers.bench-geo-crowdsec-router.middlewares=bench-geo@docker,bench-crowdsec@docker"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-router.rule=Path(`/bench/geo-crowdsec-modsec`)"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-router.entrypoints=web"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-router.service=bench-compiled"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-router.middlewares=bench-geo@docker,bench-crowdsec@docker,bench-waf@docker"
+      - "traefik.http.middlewares.bench-geo.plugin.geoblock.mode=enrichandblock"
+      - "traefik.http.middlewares.bench-geo.plugin.geoblock.defaultAllow=true"
+      - "traefik.http.middlewares.bench-geo.plugin.geoblock.allowPrivate=true"
+      - "traefik.http.middlewares.bench-geo.plugin.geoblock.countryHeader=X-Geo-Country"
+      - "traefik.http.middlewares.bench-geo.plugin.geoblock.databaseAutoUpdateDir=/data/autoupdate"
+      - "traefik.http.middlewares.bench-geo.plugin.geoblock.logLevel=debug"
+      - "traefik.http.middlewares.bench-geo.plugin.geoblock.requestHeaderEnrich.X-Geo-Country=country"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.enabled=true"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.crowdsecLapiKey=lapi-key-bench-compiled"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.crowdsecAppsecEnabled=false"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.forwardedHeadersTrustedIps=172.21.0.5"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.crowdsecMode=stream"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.updateMaxFailure=-1"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.streamStartupBlock=false"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.crowdsecLapiFailureAction=passthrough"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.metricsUpdateIntervalSeconds=0"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.logLevel=DEBUG"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.captchaFilePath=/plugins-local/src/github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin/captcha.html"
+      - "traefik.http.middlewares.bench-crowdsec.plugin.crowdsecfork.banFilePath=/plugins-local/src/github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin/ban.html"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-nginx-router.rule=Path(`/bench/geo-crowdsec-modsec-nginx`)"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-nginx-router.entrypoints=web"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-nginx-router.service=bench-compiled"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-nginx-router.middlewares=bench-geo@docker,bench-crowdsec@docker,bench-waf-nginx@docker"
+      - "traefik.http.middlewares.bench-waf.plugin.modsecurity.modSecurityUrl=http://waf:8080"
+      - "traefik.http.middlewares.bench-waf.plugin.modsecurity.maxBodySizeBytesForPool=1024"
+      - "traefik.http.middlewares.bench-waf.plugin.modsecurity.maxBodySizeBytes=5120"
+      - "traefik.http.middlewares.bench-waf-nginx.plugin.modsecurity.modSecurityUrl=http://waf-nginx:8080"
+      - "traefik.http.middlewares.bench-waf-nginx.plugin.modsecurity.maxBodySizeBytesForPool=1024"
+      - "traefik.http.middlewares.bench-waf-nginx.plugin.modsecurity.maxBodySizeBytes=5120"
+
+  # Yaegi: same stacks with *-yaegi paths (Apache + nginx ModSec)
+  whoami-bench-yaegi:
+    image: traefik/whoami
+    container_name: "whoami-bench-yaegi"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.bench-yaegi.loadbalancer.server.port=80"
+      - "traefik.http.routers.bench-geo-yaegi-router.rule=Path(`/bench/geo-yaegi`)"
+      - "traefik.http.routers.bench-geo-yaegi-router.entrypoints=web"
+      - "traefik.http.routers.bench-geo-yaegi-router.service=bench-yaegi"
+      - "traefik.http.routers.bench-geo-yaegi-router.middlewares=bench-geo-yaegi@docker"
+      - "traefik.http.routers.bench-geo-crowdsec-yaegi-router.rule=Path(`/bench/geo-crowdsec-yaegi`)"
+      - "traefik.http.routers.bench-geo-crowdsec-yaegi-router.entrypoints=web"
+      - "traefik.http.routers.bench-geo-crowdsec-yaegi-router.service=bench-yaegi"
+      - "traefik.http.routers.bench-geo-crowdsec-yaegi-router.middlewares=bench-geo-yaegi@docker,bench-crowdsec-yaegi@docker"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-yaegi-router.rule=Path(`/bench/geo-crowdsec-modsec-yaegi`)"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-yaegi-router.entrypoints=web"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-yaegi-router.service=bench-yaegi"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-yaegi-router.middlewares=bench-geo-yaegi@docker,bench-crowdsec-yaegi@docker,bench-waf-yaegi@docker"
+      - "traefik.http.middlewares.bench-geo-yaegi.plugin.geoblockyaegi.mode=enrichandblock"
+      - "traefik.http.middlewares.bench-geo-yaegi.plugin.geoblockyaegi.defaultAllow=true"
+      - "traefik.http.middlewares.bench-geo-yaegi.plugin.geoblockyaegi.allowPrivate=true"
+      - "traefik.http.middlewares.bench-geo-yaegi.plugin.geoblockyaegi.countryHeader=X-Geo-Country"
+      - "traefik.http.middlewares.bench-geo-yaegi.plugin.geoblockyaegi.databaseAutoUpdateDir=/data/autoupdate"
+      - "traefik.http.middlewares.bench-geo-yaegi.plugin.geoblockyaegi.logLevel=debug"
+      - "traefik.http.middlewares.bench-geo-yaegi.plugin.geoblockyaegi.requestHeaderEnrich.X-Geo-Country=country"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.enabled=true"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.crowdsecLapiKey=lapi-key-bench-yaegi"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.crowdsecAppsecEnabled=false"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.forwardedHeadersTrustedIps=172.21.0.5"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.crowdsecMode=stream"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.updateMaxFailure=-1"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.streamStartupBlock=false"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.crowdsecLapiFailureAction=passthrough"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.metricsUpdateIntervalSeconds=0"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.logLevel=DEBUG"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.captchaFilePath=/plugins-local/src/github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin/captcha.html"
+      - "traefik.http.middlewares.bench-crowdsec-yaegi.plugin.crowdsecforkyaegi.banFilePath=/plugins-local/src/github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin/ban.html"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-nginx-yaegi-router.rule=Path(`/bench/geo-crowdsec-modsec-nginx-yaegi`)"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-nginx-yaegi-router.entrypoints=web"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-nginx-yaegi-router.service=bench-yaegi"
+      - "traefik.http.routers.bench-geo-crowdsec-modsec-nginx-yaegi-router.middlewares=bench-geo-yaegi@docker,bench-crowdsec-yaegi@docker,bench-waf-nginx-yaegi@docker"
+      - "traefik.http.middlewares.bench-waf-yaegi.plugin.modsecurityyaegi.modSecurityUrl=http://waf:8080"
+      - "traefik.http.middlewares.bench-waf-yaegi.plugin.modsecurityyaegi.maxBodySizeBytesForPool=1024"
+      - "traefik.http.middlewares.bench-waf-yaegi.plugin.modsecurityyaegi.maxBodySizeBytes=5120"
+      - "traefik.http.middlewares.bench-waf-nginx-yaegi.plugin.modsecurityyaegi.modSecurityUrl=http://waf-nginx:8080"
+      - "traefik.http.middlewares.bench-waf-nginx-yaegi.plugin.modsecurityyaegi.maxBodySizeBytesForPool=1024"
+      - "traefik.http.middlewares.bench-waf-nginx-yaegi.plugin.modsecurityyaegi.maxBodySizeBytes=5120"
+
+  # Inspect-only nginx CRS sidecar. After request phases, proxy_pass to an
+  # in-process unix socket (no dummy whoami). See traefik-modsecurity
+  # docker-compose.test.nginx.yml.
+  #
+  # Block log (parse `ModSecurity: Access denied` + `[id "949110"]` + `unique_id`):
+  #   error_log /var/log/nginx/error.log → /dev/stderr  →  docker logs waf-nginx
+  # JSON audit (RelevantOnly): /tmp/modsecurity/modsec_audit.log
+  waf-nginx:
+    image: owasp/modsecurity-crs:4.3.0-nginx-alpine-202406090906
+    container_name: "waf-nginx"
+    restart: unless-stopped
+    environment:
+      - PARANOIA=1
+      - ANOMALY_INBOUND=10
+      - ANOMALY_OUTBOUND=5
+      - REPORTING_LEVEL=2
+      - MODSEC_AUDIT_LOG_FORMAT=JSON
+      - MODSEC_AUDIT_LOG=/tmp/modsecurity/modsec_audit.log
+      - MODSEC_AUDIT_ENGINE=RelevantOnly
+      - MODSEC_RULE_ENGINE=On
+      - REAL_IP_HEADER=X-Real-IP
+      - "SET_REAL_IP_FROM=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+      - REAL_IP_RECURSIVE=on
+    volumes:
+      - ./crs-nginx/realip.conf:/etc/nginx/conf.d/zz-realip.conf:ro
+      - ./crs-nginx/drain-origin.conf:/etc/nginx/conf.d/zz-drain-origin.conf:ro
+      - ./crs-nginx/proxy_backend.drain.conf.template:/etc/nginx/templates/includes/proxy_backend.conf.template:ro
+    labels:
+      - "traefik.enable=false"

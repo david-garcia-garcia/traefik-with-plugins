@@ -1,0 +1,40 @@
+# Bench static config. Same as traefik.yml plus Yaegi copies of geoblock/modsecurity.
+# Applied via compose.bench.yaml (--configFile). Keep shared keys in sync with traefik.yml.
+entryPoints:
+  web:
+    address: ":80"
+    forwardedHeaders:
+      insecure: true
+  websecure:
+    address: ":443"
+log:
+  level: "TRACE"
+api:
+  dashboard: true
+  insecure: true
+providers:
+  docker:
+    exposedByDefault: false
+    # This socket is shared with other compose projects; only watch this stack.
+    constraints: "Label(`com.docker.compose.project`, `traefik-with-plugins`)"
+# Keys must differ from the embedded registry (geoblock / modsecurity / crowdsecfork).
+experimental:
+  localPlugins:
+    geoblockyaegi:
+      moduleName: github.com/david-garcia-garcia/traefik-geoblock
+      settings:
+        useUnsafe: true
+    modsecurityyaegi:
+      moduleName: github.com/david-garcia-garcia/traefik-modsecurity
+      settings:
+        useUnsafe: true
+    crowdsecforkyaegi:
+      moduleName: github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin
+      settings:
+        useUnsafe: true
+tls:
+  options:
+    default:
+      sslProtocols:
+        - "TLSv1.2"
+        - "TLSv1.3"
