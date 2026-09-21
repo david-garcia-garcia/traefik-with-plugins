@@ -27,10 +27,10 @@ if ($Env:REGISTRY_USER -and $Env:REGISTRY_PWD) {
 
 # Core Server, always build as it is a dependency to other images
 Write-Output "Building $($Env:IMAGE_NAME)"
-docker compose -f compose.yaml build
+docker compose --env-file versions.conf -f compose.yaml build
 
 if ($StartContainers -eq $true) {
-    docker compose -f compose.yaml up
+    docker compose --env-file versions.conf -f compose.yaml up
 }
 
 if ($Push -eq $true) {

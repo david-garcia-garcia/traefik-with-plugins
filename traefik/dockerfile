@@ -1,8 +1,8 @@
 # Multi-stage build for Traefik with embedded plugins  
 # This dockerfile builds Traefik from source with plugins compiled directly into the binary
-# Versions are controlled via versions.env
+# Versions are controlled via versions.conf
 
-# Build arguments for versions and repositories (from .env)
+# Build arguments for versions and repositories (from versions.conf)
 # Repository paths are stored without https:// prefix
 ARG TRAEFIK_REPO
 ARG TRAEFIK_VERSION
@@ -14,6 +14,8 @@ ARG PLUGIN_GEOBLOCK_REPO
 ARG PLUGIN_GEOBLOCK_VERSION
 ARG PLUGIN_CROWDSEC_REPO
 ARG PLUGIN_CROWDSEC_VERSION
+ARG PLUGIN_CROWDSECFORK_REPO
+ARG PLUGIN_CROWDSECFORK_VERSION
 ARG PLUGIN_SABLIER_REPO
 ARG PLUGIN_SABLIER_VERSION
 
@@ -31,6 +33,8 @@ ARG PLUGIN_GEOBLOCK_REPO
 ARG PLUGIN_GEOBLOCK_VERSION
 ARG PLUGIN_CROWDSEC_REPO
 ARG PLUGIN_CROWDSEC_VERSION
+ARG PLUGIN_CROWDSECFORK_REPO
+ARG PLUGIN_CROWDSECFORK_VERSION
 ARG PLUGIN_SABLIER_REPO
 ARG PLUGIN_SABLIER_VERSION
 
@@ -72,7 +76,8 @@ RUN set -eux; \
     go mod edit -require=${PLUGIN_SABLIER_REPO}@${PLUGIN_SABLIER_VERSION} && \
     go mod edit -require=${PLUGIN_CROWDSEC_REPO}@${PLUGIN_CROWDSEC_VERSION} && \
     go mod edit -require=${PLUGIN_GEOBLOCK_REPO}@${PLUGIN_GEOBLOCK_VERSION} && \
-    go mod edit -require=${PLUGIN_REALIP_REPO}@${PLUGIN_REALIP_VERSION}
+    go mod edit -require=${PLUGIN_REALIP_REPO}@${PLUGIN_REALIP_VERSION} && \
+    go get ${PLUGIN_CROWDSECFORK_REPO}@${PLUGIN_CROWDSECFORK_VERSION}
 
 # Download dependencies
 RUN set -eux; \
@@ -99,6 +104,7 @@ RUN set -eux; \
     MODSECURITY_ORG=$(echo "${PLUGIN_MODSECURITY_REPO}" | cut -d'/' -f2) && \
     REALIP_ORG=$(echo "${PLUGIN_REALIP_REPO}" | cut -d'/' -f2) && \
     CROWDSEC_ORG=$(echo "${PLUGIN_CROWDSEC_REPO}" | cut -d'/' -f2) && \
+    CROWDSECFORK_ORG=$(echo "${PLUGIN_CROWDSECFORK_REPO}" | cut -d'/' -f2) && \
     SABLIER_ORG=$(echo "${PLUGIN_SABLIER_REPO}" | cut -d'/' -f2) && \
     \
     # Clone all plugins to their proper organization directories \
@@ -118,12 +124,27 @@ RUN set -eux; \
     cd "/plugins-local/src/github.com/${CROWDSEC_ORG}" && \
     git clone "https://${PLUGIN_CROWDSEC_REPO}.git" --branch "${PLUGIN_CROWDSEC_VERSION}" --single-branch && \
     \
+    mkdir -p "/plugins-local/src/github.com/${CROWDSECFORK_ORG}" && \
+    cd "/plugins-local/src/github.com/${CROWDSECFORK_ORG}" && \
+    git clone "https://${PLUGIN_CROWDSECFORK_REPO}.git" --branch "${PLUGIN_CROWDSECFORK_VERSION}" --single-branch && \
+    \
     mkdir -p "/plugins-local/src/github.com/${SABLIER_ORG}" && \
     cd "/plugins-local/src/github.com/${SABLIER_ORG}" && \
     git clone "https://${PLUGIN_SABLIER_REPO}.git" --branch "${PLUGIN_SABLIER_VERSION}" --single-branch
 
-# Build Traefik binary with embedded plugins (WebUI gets embedded via go:embed)
+# Yaegi loads crowdsecfork from vendor/; native compile uses the published module.
+# The plugin vendors a patched traefik-middleware-utilities (Peek/State) that is
+# not in the tagged utilities release, so point the Traefik build at that tree.
 WORKDIR /build/traefik
+RUN set -eux; \
+    UTIL_VENDOR="/plugins-local/src/${PLUGIN_CROWDSECFORK_REPO}/vendor/github.com/david-garcia-garcia/traefik-middleware-utilities" && \
+    if [ ! -f "${UTIL_VENDOR}/go.mod" ]; then \
+      printf 'module github.com/david-garcia-garcia/traefik-middleware-utilities\n\ngo 1.21\n' > "${UTIL_VENDOR}/go.mod"; \
+    fi && \
+    go mod edit -replace=github.com/david-garcia-garcia/traefik-middleware-utilities="${UTIL_VENDOR}" && \
+    go mod tidy
+
+# Build Traefik binary with embedded plugins (WebUI gets embedded via go:embed)
 RUN set -eux; \
     mkdir -p dist/linux/amd64 && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -installsuffix nocgo -o "./dist/linux/amd64/traefik" ./cmd/traefik

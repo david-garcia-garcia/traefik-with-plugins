@@ -2,37 +2,25 @@
 
 This directory contains Pester integration tests for the Traefik with Plugins setup.
 
-## Test File
+## Test files
 
-- `integration-tests.Tests.ps1` - Main Pester test file containing all integration tests
+Pester discovers `*.Tests.ps1` in this directory. Shared helpers live in `TestHelpers.ps1`.
 
-## Test Coverage
+| File | Domain |
+|---|---|
+| `traefik.Tests.ps1` | API, dashboard, 404, container health |
+| `plain.Tests.ps1` | `/plain` (no middleware) |
+| `modsecurity.Tests.ps1` | `/modsecurity` |
+| `geoblock.Tests.ps1` | `/geoblock` |
+| `crowdsec.Tests.ps1` | `/crowdsec` (upstream) |
+| `crowdsecfork.Tests.ps1` | `/crowdsecfork` (compiled) |
+| `realip.Tests.ps1` | `/realip` |
 
-The integration tests cover the following areas:
+`./Test-Integration.ps1` runs the whole directory. To run one domain:
 
-### 1. Traefik API Tests
-- API health check (`/ping`)
-- Raw data endpoint (`/api/rawdata`)
-- Router information (`/api/http/routers`)
-- Service information (`/api/http/services`)
-- Middleware information (`/api/http/middlewares`)
-
-### 2. Service Endpoint Tests
-- **Whoami Service** - Tests the `/whoami` endpoint
-- **CrowdSec Service** - Tests the `/crowdsec` endpoint with CrowdSec bouncer plugin
-
-### 3. Plugin Configuration Tests
-- Verifies CrowdSec bouncer middleware is properly configured
-
-### 4. Basic Routing Tests
-- Path-based routing functionality
-- 404 handling for unknown paths
-
-### 5. Basic Performance Tests
-- Response time checks for key endpoints
-
-### 6. Header Tests
-- Basic HTTP header validation
+```powershell
+Invoke-Pester -Path ./scripts/geoblock.Tests.ps1 -Output Detailed
+```
 
 ## Running the Tests
 
@@ -47,7 +35,35 @@ The tests are designed to be run via the main `Test-Integration.ps1` script in t
 
 # Run tests assuming services are already running
 ./Test-Integration.ps1 -SkipWait
+
+# Benchmark compiled vs Yaegi stacks (compose.yaml + compose.bench.yaml)
+./Test-Benchmark.ps1
+./Test-Benchmark.ps1 -Requests 500 -Concurrency 16
 ```
+
+## Compiled vs Yaegi benchmark
+
+The test stack is `compose.yaml` + `traefik.yml` (CI / `./Test-Integration.ps1`). The bench is an overlay:
+
+```powershell
+docker compose --env-file versions.conf -f compose.yaml -f compose.bench.yaml up -d
+./Test-Benchmark.ps1
+```
+
+`../Test-Benchmark.ps1` applies that overlay itself. It measures four stacks, each with compiled (embedded) middlewares and Yaegi (`traefik.bench.yml` `experimental.localPlugins`) middlewares:
+
+| Stack | Compiled | Yaegi |
+|---|---|---|
+| none | `/plain` | `/plain` (same) |
+| geo | `/bench/geo` | `/bench/geo-yaegi` |
+| geo+crowdsec | `/bench/geo-crowdsec` | `/bench/geo-crowdsec-yaegi` |
+| geo+crowdsec+modsec (apache) | `/bench/geo-crowdsec-modsec` | `/bench/geo-crowdsec-modsec-yaegi` |
+| geo+crowdsec+modsec (nginx) | `/bench/geo-crowdsec-modsec-nginx` | `/bench/geo-crowdsec-modsec-nginx-yaegi` |
+
+CrowdSec stream cursors do not collide (distinct LAPI keys):
+
+- compiled: `lapi-key-bench-compiled`
+- Yaegi: `lapi-key-bench-yaegi`
 
 ## Test Configuration
 

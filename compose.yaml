@@ -1,9 +1,9 @@
+# Version pins are in versions.conf (build config, not secrets).
+#   docker compose --env-file versions.conf up -d --build
 services:
   traefik:
     image: traefik-with-plugins:latest
     restart: unless-stopped
-    env_file:
-      - .env
     build:
       context: ./traefik
       dockerfile: dockerfile
@@ -18,6 +18,8 @@ services:
         - PLUGIN_GEOBLOCK_VERSION=${PLUGIN_GEOBLOCK_VERSION}
         - PLUGIN_CROWDSEC_REPO=${PLUGIN_CROWDSEC_REPO}
         - PLUGIN_CROWDSEC_VERSION=${PLUGIN_CROWDSEC_VERSION}
+        - PLUGIN_CROWDSECFORK_REPO=${PLUGIN_CROWDSECFORK_REPO}
+        - PLUGIN_CROWDSECFORK_VERSION=${PLUGIN_CROWDSECFORK_VERSION}
         - PLUGIN_SABLIER_REPO=${PLUGIN_SABLIER_REPO}
         - PLUGIN_SABLIER_VERSION=${PLUGIN_SABLIER_VERSION}
     volumes:
@@ -34,9 +36,9 @@ services:
       - waf
     environment:
       - IMAGE_NAME=traefik-with-plugins:latest
-      # Plugin key remapping - allows using legacy names in configurations
-      # Uncomment to use "bouncer" instead of "crowdsec" in plugin configurations
-      # - TRAEFIK_EMBEDDED_CROWDSEC_KEY=bouncer
+      # Plugin key remapping - allows using custom names in configurations
+      # - TRAEFIK_EMBEDDED_CROWDSEC_KEY=cs
+      # - TRAEFIK_EMBEDDED_CROWDSECFORK_KEY=csfork
 
   # Service 1: Plain whoami without any middleware
   whoami-plain:
@@ -113,7 +115,31 @@ services:
       - "traefik.http.middlewares.crowdsec.plugin.crowdsec.captchaHtmlFilePath=/plugins-local/src/github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin/captcha.html"
       - "traefik.http.middlewares.crowdsec.plugin.crowdsec.banHtmlFilePath=/plugins-local/src/github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin/ban.html"
 
-  # Service 5: Whoami with RealIP middleware
+  # Service 5: Whoami with CrowdSec fork middleware (david-garcia-garcia)
+  whoami-crowdsecfork:
+    image: traefik/whoami
+    container_name: "whoami-crowdsecfork"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.crowdsecfork-router.rule=Path(`/crowdsecfork`)"
+      - "traefik.http.routers.crowdsecfork-router.entrypoints=web"
+      - "traefik.http.routers.crowdsecfork-router.middlewares=crowdsecfork@docker"
+      - "traefik.http.services.crowdsecfork-service.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.enabled=true"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.crowdsecLapiKey=lapi-key-compiled-crowdsecfork"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.crowdsecAppsecEnabled=false"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.forwardedHeadersTrustedIps=172.21.0.5"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.crowdsecMode=stream"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.updateMaxFailure=-1"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.streamStartupBlock=false"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.crowdsecLapiFailureAction=passthrough"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.metricsUpdateIntervalSeconds=0"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.logLevel=DEBUG"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.captchaFilePath=/plugins-local/src/github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin/captcha.html"
+      - "traefik.http.middlewares.crowdsecfork.plugin.crowdsecfork.banFilePath=/plugins-local/src/github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin/ban.html"
+
+  # Service 6: Whoami with RealIP middleware
   whoami-realip:
     image: traefik/whoami
     container_name: "whoami-realip"
@@ -134,7 +160,7 @@ services:
       - "traefik.http.middlewares.realip.plugin.realip.processHeaders[2].depth=-1"
       - "traefik.http.middlewares.realip.plugin.realip.forceOverwrite=true"
 
-  # Service 6: Whoami with TLS (self-signed certificate for testing)
+  # Service 7: Whoami with TLS (self-signed certificate for testing)
   whoami-tls:
     image: traefik/whoami
     container_name: "whoami-tls"
@@ -146,7 +172,13 @@ services:
       - "traefik.http.routers.tls-router.tls=true"
       - "traefik.http.services.tls-service.loadbalancer.server.port=80"
 
-  # ModSecurity WAF service
+  # Inspect-only CRS sidecar (no dummy origin). After request phases Apache
+  # short-circuits with HTTP 200 via the drain overlay. See
+  # david-garcia-garcia/traefik-modsecurity docker-compose.yml.
+  #
+  # Block log (parse `ModSecurity: Access denied` + `[id "949110"]` + `unique_id`):
+  #   ErrorLog ${ERRORLOG} = /proc/self/fd/2  →  docker logs waf
+  # JSON audit (RelevantOnly): /var/log/modsec_audit.log
   waf:
     image: owasp/modsecurity-crs:4.3.0-apache-alpine-202406090906
     container_name: "waf"
@@ -155,18 +187,15 @@ services:
       - PARANOIA=1
       - ANOMALY_INBOUND=10
       - ANOMALY_OUTBOUND=5
-      - BACKEND=http://dummy
       - REPORTING_LEVEL=2
       - MODSEC_AUDIT_LOG_FORMAT=JSON
+      - MODSEC_AUDIT_LOG=/var/log/modsec_audit.log
+      - MODSEC_AUDIT_ENGINE=RelevantOnly
       - MODSEC_RULE_ENGINE=On
-    labels:
-      - "traefik.enable=false"
-
-  # Dummy backend for WAF
-  dummy:
-    image: traefik/whoami
-    container_name: "dummy"
-    restart: unless-stopped
+      - REMOTEIP_HEADER=X-Real-IP
+      - "REMOTEIP_INT_PROXY=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16"
+    volumes:
+      - ./crs-apache/httpd-vhosts.drain.conf:/usr/local/apache2/conf/extra/httpd-vhosts.conf:ro
     labels:
       - "traefik.enable=false"
 

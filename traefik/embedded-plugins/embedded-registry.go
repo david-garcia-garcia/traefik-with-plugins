@@ -11,6 +11,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	// Import our embedded plugins
+	csbouncer "github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin"
+	csbouncerconfig "github.com/david-garcia-garcia/crowdsec-bouncer-traefik-plugin/pkg/configuration"
 	geoblock "github.com/david-garcia-garcia/traefik-geoblock"
 	modsecurity "github.com/david-garcia-garcia/traefik-modsecurity"
 	realip "github.com/david-garcia-garcia/traefik-realip"
@@ -63,13 +65,20 @@ var basePluginRegistry = map[string]embeddedPluginDescriptor{
 			return sablier.New(ctx, next, config.(*sablier.Config), name)
 		},
 	},
+	"crowdsecfork": {
+		createConfig: func() interface{} { return csbouncer.CreateConfig() },
+		callNew: func(ctx context.Context, next http.Handler, config interface{}, name string) (http.Handler, error) {
+			return csbouncer.New(ctx, next, config.(*csbouncerconfig.Config), name)
+		},
+	},
 }
 
 // EmbeddedPluginRegistry is the public registry that includes remapped plugin names
 // Remapping is controlled via environment variables:
 // - TRAEFIK_EMBEDDED_MODSECURITY_KEY="customname" -> allows plugin.customname instead of plugin.modsecurity
 // - TRAEFIK_EMBEDDED_REALIP_KEY="customname" -> allows plugin.customname instead of plugin.realip
-// - TRAEFIK_EMBEDDED_CROWDSEC_KEY="bouncer" -> allows plugin.bouncer instead of plugin.crowdsec
+// - TRAEFIK_EMBEDDED_CROWDSEC_KEY="cs" -> allows plugin.cs instead of plugin.crowdsec
+// - TRAEFIK_EMBEDDED_CROWDSECFORK_KEY="customname" -> allows plugin.customname instead of plugin.crowdsecfork
 // - TRAEFIK_EMBEDDED_GEOBLOCK_KEY="customname" -> allows plugin.customname instead of plugin.geoblock
 // - TRAEFIK_EMBEDDED_SABLIER_KEY="customname" -> allows plugin.customname instead of plugin.sablier
 var EmbeddedPluginRegistry = buildPluginRegistry()

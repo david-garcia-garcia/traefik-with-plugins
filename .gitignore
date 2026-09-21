@@ -1,3 +1,7 @@
+# Local secrets / overrides. Version pins live in versions.conf.
+.env
+.env.*
+
 # Cypress
 cypress/screenshots/
 cypress/videos/

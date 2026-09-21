@@ -3,7 +3,7 @@
 
 set -e
 
-VERSIONS_FILE="${1:-.env}"
+VERSIONS_FILE="${1:-versions.conf}"
 DOCKER_TAG="${2}"
 
 if [ ! -f "$VERSIONS_FILE" ]; then
@@ -11,7 +11,7 @@ if [ ! -f "$VERSIONS_FILE" ]; then
     exit 1
 fi
 
-# Source the env file
+# Source the version pins
 source "$VERSIONS_FILE"
 
 # Generate release notes
@@ -43,6 +43,10 @@ cat << EOF
 - **CrowdSec Bouncer**
   - Version: ${PLUGIN_CROWDSEC_VERSION}
   - Repository: https://${PLUGIN_CROWDSEC_REPO}
+
+- **CrowdSec Fork**
+  - Version: ${PLUGIN_CROWDSECFORK_VERSION}
+  - Repository: https://${PLUGIN_CROWDSECFORK_REPO}
 
 - **Sablier**
   - Version: ${PLUGIN_SABLIER_VERSION}

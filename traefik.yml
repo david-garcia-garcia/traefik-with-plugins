@@ -13,6 +13,8 @@ api:
 providers:
   docker:
     exposedByDefault: false
+    # This socket is shared with other compose projects; only watch this stack.
+    constraints: "Label(`com.docker.compose.project`, `traefik-with-plugins`)"
 # TLS configuration for testing self-signed certificates
 tls:
   # Enable default certificate generation for unmatched domains

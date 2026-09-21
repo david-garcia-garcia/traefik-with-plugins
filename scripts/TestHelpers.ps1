@@ -4,6 +4,33 @@
 # Test configuration constants
 $script:DefaultTimeout = 15
 $script:DefaultRetryInterval = 2
+$script:BaseUrl = "http://localhost:8000"
+$script:TraefikApiUrl = "http://localhost:8080"
+$script:TestTimeout = 30
+
+function Invoke-TestRequest {
+    param(
+        [string]$Uri,
+        [string]$Method = "GET",
+        [hashtable]$Headers = @{},
+        [int]$TimeoutSec = 10,
+        [int]$MaxRetries = 3
+    )
+
+    $retryCount = 0
+    do {
+        try {
+            return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -TimeoutSec $TimeoutSec -UseBasicParsing
+        }
+        catch {
+            $retryCount++
+            if ($retryCount -eq $MaxRetries) {
+                throw $_
+            }
+            Start-Sleep -Seconds 2
+        }
+    } while ($retryCount -lt $MaxRetries)
+}
 
 function Get-TraefikContainerName {
     # Discover by service suffix so it works across different

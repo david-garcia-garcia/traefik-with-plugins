@@ -75,6 +75,7 @@ describe('Traefik Dashboard Tests', () => {
         'waf@docker',           // ModSecurity
         'geoblock@docker',      // Geoblock
         'crowdsec@docker',      // CrowdSec
+        'crowdsecfork@docker',  // CrowdSec fork
         'realip@docker'         // RealIP
       ]
       
@@ -120,6 +121,7 @@ describe('Traefik Dashboard Tests', () => {
         'modsecurity-router@docker',
         'geoblock-router@docker',
         'crowdsec-router@docker',
+        'crowdsecfork-router@docker',
         'realip-router@docker',
         'plain-router@docker'
       ]
@@ -141,6 +143,7 @@ describe('Traefik Dashboard Tests', () => {
         'modsecurity-service@docker',
         'geoblock-service@docker',
         'crowdsec-service@docker',
+        'crowdsecfork-service@docker',
         'realip-service@docker',
         'plain-service@docker'
       ]

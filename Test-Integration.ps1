@@ -15,7 +15,7 @@
     Skip waiting for services to be ready (assumes they're already running)
 
 .PARAMETER TestPath
-    Path to the Pester test file (defaults to ./scripts/integration-tests.Tests.ps1)
+    Path to the Pester tests (defaults to ./scripts; discovers *.Tests.ps1 by domain)
 
 .EXAMPLE
     ./Test-Integration.ps1
@@ -34,7 +34,7 @@
 param(
     [switch]$SkipDockerCleanup,
     [switch]$SkipWait,
-    [string]$TestPath = "./scripts/integration-tests.Tests.ps1"
+    [string]$TestPath = "./scripts"
 )
 
 $ErrorActionPreference = "Stop"
@@ -180,7 +180,7 @@ try {
     # Start Docker services
     Write-Step "Starting Docker Compose services..."
     try {
-        docker compose up -d --build
+        docker compose --env-file versions.conf up -d --build
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to start Docker services"
         }
@@ -200,14 +200,15 @@ try {
             (Test-ServiceHealth -Url "http://localhost:8000/plain" -ServiceName "Plain whoami service"),
             (Test-ServiceHealth -Url "http://localhost:8000/modsecurity" -ServiceName "ModSecurity whoami service"),
             (Test-ServiceHealth -Url "http://localhost:8000/geoblock" -ServiceName "Geoblock whoami service"),
-            (Test-ServiceHealth -Url "http://localhost:8000/crowdsec" -ServiceName "CrowdSec whoami service")
+            (Test-ServiceHealth -Url "http://localhost:8000/crowdsec" -ServiceName "CrowdSec whoami service"),
+            (Test-ServiceHealth -Url "http://localhost:8000/crowdsecfork" -ServiceName "CrowdSec fork whoami service")
         )
         
         if ($servicesReady -contains $false) {
             Write-Error "One or more services failed to start properly"
             if (-not $SkipDockerCleanup) {
                 Write-Step "Cleaning up Docker services..."
-                docker compose down -v
+                docker compose --env-file versions.conf down -v
             }
             exit 1
         }
@@ -222,7 +223,7 @@ try {
     Write-Host ""
     
     if (-not (Test-Path $TestPath)) {
-        Write-Error "Test file not found: $TestPath"
+        Write-Error "Test path not found: $TestPath"
         exit 1
     }
 
@@ -261,7 +262,7 @@ finally {
     if (-not $SkipDockerCleanup) {
         Write-Step "Cleaning up Docker services..."
         try {
-            docker compose down -v 2>$null
+            docker compose --env-file versions.conf down -v 2>$null
             Write-Success "Docker services stopped and cleaned up"
         }
         catch {
@@ -269,7 +270,7 @@ finally {
         }
     } else {
         Write-Warning "Skipping Docker cleanup (services left running for debugging)"
-        Write-Host "To manually stop services, run: docker compose down -v" -ForegroundColor Gray
+        Write-Host "To manually stop services, run: docker compose --env-file versions.conf down -v" -ForegroundColor Gray
     }
     
     Write-Host ""
