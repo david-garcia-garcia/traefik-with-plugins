@@ -20,7 +20,7 @@ ARG PLUGIN_SABLIER_REPO
 ARG PLUGIN_SABLIER_VERSION
 
 # Stage 1: Build stage with Go and Git
-FROM golang:1.25-alpine3.22 AS builder
+FROM golang:1.26-alpine3.24 AS builder
 
 # Re-declare ARGs after FROM to make them available in this stage
 ARG TRAEFIK_REPO
@@ -144,13 +144,19 @@ RUN set -eux; \
     go mod edit -replace=github.com/david-garcia-garcia/traefik-middleware-utilities="${UTIL_VENDOR}" && \
     go mod tidy
 
-# Build Traefik binary with embedded plugins (WebUI gets embedded via go:embed)
+# Build Traefik binary with embedded plugins (WebUI gets embedded via go:embed).
+# Upstream injects the release version the same way (see Makefile / goreleaser ldflags).
+# The git tag is vX.Y.Z; the reported version omits the leading v, matching official images.
 RUN set -eux; \
     mkdir -p dist/linux/amd64 && \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -installsuffix nocgo -o "./dist/linux/amd64/traefik" ./cmd/traefik
+    VERSION="${TRAEFIK_VERSION#v}" && \
+    DATE="$(date -u '+%Y-%m-%d_%I:%M:%S%p')" && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+      -ldflags "-s -w -X github.com/traefik/traefik/v3/pkg/version.Version=${VERSION} -X github.com/traefik/traefik/v3/pkg/version.BuildDate=${DATE}" \
+      -installsuffix nocgo -o "./dist/linux/amd64/traefik" ./cmd/traefik
 
 # Stage 2: Final runtime image
-FROM alpine:3.22
+FROM alpine:3.24
 
 RUN set -eux; \
     apk add --no-cache --no-progress ca-certificates tzdata
